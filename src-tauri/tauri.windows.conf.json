@@ -1,0 +1,50 @@
+{
+	"$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+	"identifier": "com.zmeng.app",
+	"plugins": {
+		"updater": {
+			"pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDVGODlCOTdFOUU2RjZDMQpSV1RCOXVicGw1djRCZE4waUVoR2lCU2xxYWlvMUhDUTFTR2VXZmFyWmVZMXBxRy9vV1BHQXBBdwo=",
+			"endpoints": ["https://updates.zmeng.invalid/latest.json"],
+			"windows": {
+				"installMode": "passive"
+			}
+		}
+	},
+	"bundle": {
+		"createUpdaterArtifacts": false,
+		"active": true,
+		"category": "Utility",
+		"shortDescription": "ZMENG",
+		"longDescription": "截图、剪贴板、OCR、翻译与 AI 一体化效率工具",
+		"macOS": {
+			"minimumSystemVersion": "12.3.0"
+		},
+		"windows": {
+			"certificateThumbprint": null,
+			"digestAlgorithm": "sha256",
+			"webviewInstallMode": {
+				"silent": true,
+				"type": "embedBootstrapper"
+			},
+			"nsis": {
+				"template": "./build-configs/installer.nsi",
+				"displayLanguageSelector": true,
+				"installerIcon": "icons/icon.ico",
+				"installMode": "perMachine",
+				"languages": ["SimpChinese", "TradChinese", "English"]
+			}
+		},
+		"licenseFile": "../LICENSE-Commercial",
+		"targets": ["nsis"],
+		"icon": [
+			"icons/32x32.png",
+			"icons/128x128.png",
+			"icons/128x128@2x.png",
+			"icons/icon.icns",
+			"icons/icon.ico"
+		],
+		"resources": {
+			"app-icons/": "app-icons/"
+		}
+	}
+}

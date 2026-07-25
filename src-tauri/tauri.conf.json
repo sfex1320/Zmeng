@@ -1,0 +1,66 @@
+{
+	"$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+	"productName": "ZMENG",
+	"mainBinaryName": "zmeng",
+	"version": "0.0.8",
+	"identifier": "com.zmeng.app",
+	"build": {
+		"removeUnusedCommands": true,
+		"frontendDist": "../dist",
+		"devUrl": "http://localhost:8083",
+		"beforeDevCommand": "pnpm dev",
+		"beforeBuildCommand": "pnpm build"
+	},
+	"app": {
+		"withGlobalTauri": true,
+		"windows": [
+			{
+				"label": "main",
+				"fullscreen": false,
+				"height": 760,
+				"minHeight": 640,
+				"maximizable": true,
+				"title": "ZMENG",
+				"width": 1180,
+				"minWidth": 960,
+				"center": true,
+				"decorations": true,
+				"titleBarStyle": "Overlay",
+				"hiddenTitle": true,
+				"trafficLightPosition": {
+					"x": 16,
+					"y": 16
+				},
+				"visible": false,
+				"backgroundThrottling": "disabled",
+				"url": "/"
+			},
+			{
+				"label": "clipboard-sidebar",
+				"title": "ZMENG Clipboard",
+				"width": 460,
+				"height": 900,
+				"minWidth": 300,
+				"maximizable": false,
+				"minimizable": false,
+				"resizable": true,
+				"decorations": false,
+				"transparent": true,
+				"alwaysOnTop": true,
+				"skipTaskbar": true,
+				"shadow": false,
+				"visible": false,
+				"backgroundThrottling": "disabled",
+				"url": "/clipboardSidebar"
+			}
+		],
+		"macOSPrivateApi": true,
+		"security": {
+			"csp": null,
+			"assetProtocol": {
+				"enable": true,
+				"scope": ["*", "**"]
+			}
+		}
+	}
+}
