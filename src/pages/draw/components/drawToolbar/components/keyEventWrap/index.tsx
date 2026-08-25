@@ -1,4 +1,3 @@
-import { Tooltip } from "antd";
 import React, {
 	type JSX,
 	useCallback,
@@ -24,6 +23,97 @@ import type {
 import { HotkeysScope } from "@/types/core/appHotKeys";
 import { formatKey } from "@/utils/format";
 import { EnableKeyEventPublisher } from "./extra";
+
+
+/**
+ * 自研 Tooltip：纯 CSS 绝对定位，不经过 antd/rc-trigger 的视口坐标计算。
+ *
+ * 背景：antd Tooltip 在跨双屏大视口（如 7680×2160）中，
+ * 无论怎么设置 getPopupContainer，rc-trigger 的定位计算都会偏移一整屏。
+ * 改用 position:absolute + bottom + left:50% + translateX(-50%)，
+ * 定位完全相对于按钮自身，物理上不可能跨屏。
+ *
+ * 风格：深色毛玻璃、圆角、居中文本、350ms 延迟。
+ */
+const ZmengTooltip: React.FC<{
+	title: string;
+	children: JSX.Element;
+}> = ({ title, children }) => {
+	const [visible, setVisible] = useState(false);
+	const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+	const wrapRef = useRef<HTMLSpanElement | null>(null);
+	const [align, setAlign] = useState<"center" | "left" | "right">("center");
+
+	const handleMouseEnter = useCallback(() => {
+		timerRef.current = setTimeout(() => setVisible(true), 350);
+	}, []);
+
+	const handleMouseLeave = useCallback(() => {
+		if (timerRef.current) clearTimeout(timerRef.current);
+		setVisible(false);
+	}, []);
+
+	useEffect(() => {
+		if (!visible || !wrapRef.current) return;
+		const rect = wrapRef.current.getBoundingClientRect();
+		const margin = 110;
+		if (rect.left < margin) {
+			setAlign("left");
+		} else if (rect.right + margin > window.innerWidth) {
+			setAlign("right");
+		} else {
+			setAlign("center");
+		}
+	}, [visible]);
+
+	useEffect(() => {
+		return () => {
+			if (timerRef.current) clearTimeout(timerRef.current);
+		};
+	}, []);
+
+	const tooltipStyle: React.CSSProperties = useMemo(() => {
+		const base: React.CSSProperties = {
+			position: "absolute",
+			bottom: "calc(100% + 6px)",
+			background: "rgba(30,30,30,0.88)",
+			backdropFilter: "blur(8px)",
+			WebkitBackdropFilter: "blur(8px)",
+			border: "1px solid rgba(255,255,255,0.12)",
+			borderRadius: 6,
+			padding: "3px 10px",
+			fontSize: 12,
+			lineHeight: "20px",
+			color: "rgba(255,255,255,0.92)",
+			whiteSpace: "nowrap",
+			zIndex: 10000,
+			pointerEvents: "none",
+			textAlign: "center",
+			boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
+			fontFamily: 'system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif',
+		};
+		switch (align) {
+			case "left":
+				return { ...base, left: 0 };
+			case "right":
+				return { ...base, right: 0 };
+			default:
+				return { ...base, left: "50%", transform: "translateX(-50%)" };
+		}
+	}, [align]);
+
+	return (
+		<span
+			ref={wrapRef}
+			style={{ position: "relative", display: "inline-flex" }}
+			onMouseEnter={handleMouseEnter}
+			onMouseLeave={handleMouseLeave}
+		>
+			{children}
+			{visible && <span style={tooltipStyle}>{title}</span>}
+		</span>
+	);
+};
 
 const KeyEventHandleCore: React.FC<{
 	keyEventValue: DrawToolbarKeyEventValue | undefined;
@@ -80,20 +170,7 @@ const KeyEventHandleCore: React.FC<{
 		);
 	}, [componentKey, intl, keyEventValue?.hotKey]);
 
-	// 多屏修复：提示挂到无 transform 的外层容器。此前挂 .draw-toolbar（带拖拽
-	// transform + 缩放），antd 对 transform 祖先的定位计算会偏移到另一块屏幕
-	// 挂触发按钮的父元素：定位以按钮为锚点，多屏/混合 DPI/缩放下天然正确，
-	// 且弹层与按钮 DOM 相邻、hover 稳定（共享容器方案在副屏会偏移到主屏）
-	const getPopupContainer = useCallback(
-		(triggerNode: HTMLElement) => triggerNode.parentElement ?? document.body,
-		[],
-	);
-
-	return (
-		<Tooltip title={buttonTitle} getPopupContainer={getPopupContainer}>
-			{children}
-		</Tooltip>
-	);
+	return <ZmengTooltip title={buttonTitle}>{children}</ZmengTooltip>;
 };
 
 const KeyEventHandle = React.memo(KeyEventHandleCore);
