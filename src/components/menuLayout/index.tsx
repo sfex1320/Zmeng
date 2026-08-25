@@ -1,5 +1,6 @@
 import {
 	ApiOutlined,
+	EditOutlined,
 	AppstoreOutlined,
 	InfoCircleOutlined,
 	RobotOutlined,
@@ -119,6 +120,13 @@ const NAV_GROUPS: SidebarNavGroup[] = [
 	{
 		label: "更多",
 		items: [
+			{
+				key: "/annotateLab",
+				path: "/annotateLab",
+				label: "标注实验场",
+				desc: "自研标注画布验证",
+				icon: <EditOutlined />,
+			},
 			{
 				key: "/personalization/plugins",
 				path: "/personalization/plugins",

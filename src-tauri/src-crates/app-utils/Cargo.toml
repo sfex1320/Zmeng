@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+zmeng-capture = { path = "../zmeng-capture" }
 xcap = { workspace = true }
 tauri = { workspace = true }
 zune-jpegxl = { workspace = true }

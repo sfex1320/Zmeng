@@ -284,65 +284,62 @@ pub fn capture_target_monitor(
     #[allow(unused_variables)] exclude_window: Option<&tauri::Window>,
     #[allow(unused_variables)] color_format: ColorFormat,
 ) -> Option<image::DynamicImage> {
+    // ZMENG 复刻阶段二：Windows 像素采集已切换为自研 zmeng-capture
+    // （DXGI Desktop Duplication 主路径 + GDI BitBLT 回退），不再依赖 xcap 采集实现。
+    // xcap 的 Monitor 此处仅用于读取显示器全局坐标（元数据）。
     #[cfg(target_os = "windows")]
     {
-        let image = if let Some(crop_area) = crop_area {
-            match color_format {
-                ColorFormat::Rgb8 => DynamicImage::ImageRgb8(
-                    match monitor.capture_region_rgb(
-                        crop_area.min_x as u32,
-                        crop_area.min_y as u32,
-                        (crop_area.max_x - crop_area.min_x) as u32,
-                        (crop_area.max_y - crop_area.min_y) as u32,
-                    ) {
-                        Ok(image) => image,
-                        Err(e) => {
-                            log::error!(
-                                "[capture_target_monitor] failed to capture image: {:?}",
-                                e
-                            );
-                            return None;
-                        }
-                    },
-                ),
-                ColorFormat::Rgba8 => DynamicImage::ImageRgba8(
-                    match monitor.capture_region(
-                        crop_area.min_x as u32,
-                        crop_area.min_y as u32,
-                        (crop_area.max_x - crop_area.min_x) as u32,
-                        (crop_area.max_y - crop_area.min_y) as u32,
-                    ) {
-                        Ok(image) => image,
-                        Err(e) => {
-                            log::error!(
-                                "[capture_target_monitor] failed to capture image: {:?}",
-                                e
-                            );
-                            return None;
-                        }
-                    },
-                ),
+        let (monitor_x, monitor_y) = (
+            monitor.x().unwrap_or(0),
+            monitor.y().unwrap_or(0),
+        );
+
+        let (rgba, method) =
+            match zmeng_capture::capture_monitor_by_rect_blocking(monitor_x, monitor_y) {
+                Ok(result) => result,
+                Err(e) => {
+                    log::error!(
+                        "[capture_target_monitor] zmeng-capture failed: {:?}",
+                        e
+                    );
+                    return None;
+                }
+            };
+        log::info!(
+            "[capture_target_monitor] zmeng-capture method={:?} size={}x{}",
+            method,
+            rgba.width(),
+            rgba.height()
+        );
+
+        // crop_area 为相对显示器左上角的坐标
+        let image: DynamicImage = if let Some(crop_area) = crop_area {
+            let crop_x = crop_area.min_x.max(0) as u32;
+            let crop_y = crop_area.min_y.max(0) as u32;
+            let crop_w = (crop_area.max_x - crop_area.min_x).max(0) as u32;
+            let crop_h = (crop_area.max_y - crop_area.min_y).max(0) as u32;
+            if crop_w == 0
+                || crop_h == 0
+                || crop_x + crop_w > rgba.width()
+                || crop_y + crop_h > rgba.height()
+            {
+                log::error!(
+                    "[capture_target_monitor] invalid crop area {:?} for {}x{}",
+                    crop_area,
+                    rgba.width(),
+                    rgba.height()
+                );
+                return None;
             }
+            DynamicImage::ImageRgba8(rgba).crop_imm(crop_x, crop_y, crop_w, crop_h)
         } else {
-            match color_format {
-                ColorFormat::Rgb8 => DynamicImage::ImageRgb8(match monitor.capture_image_rgb() {
-                    Ok(image) => image,
-                    Err(e) => {
-                        log::error!("[capture_target_monitor] failed to capture image: {:?}", e);
-                        return None;
-                    }
-                }),
-                ColorFormat::Rgba8 => DynamicImage::ImageRgba8(match monitor.capture_image() {
-                    Ok(image) => image,
-                    Err(e) => {
-                        log::error!("[capture_target_monitor] failed to capture image: {:?}", e);
-                        return None;
-                    }
-                }),
-            }
+            DynamicImage::ImageRgba8(rgba)
         };
 
-        return Some(image);
+        return Some(match color_format {
+            ColorFormat::Rgb8 => DynamicImage::ImageRgb8(image.to_rgb8()),
+            ColorFormat::Rgba8 => image,
+        });
     }
 
     #[cfg(target_os = "macos")]

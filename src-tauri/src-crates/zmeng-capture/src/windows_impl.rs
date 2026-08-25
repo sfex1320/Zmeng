@@ -66,8 +66,11 @@ pub fn list_monitors() -> Result<Vec<ZmengMonitor>, String> {
         .map_err(|e| format!("[zmeng-capture] 枚举显示器失败: {e}"))
 }
 
-/// 抓取覆盖指定点的显示器整屏画面，返回 RGBA 图像 + 实际使用的采集方式。
-pub async fn capture_monitor_by_rect(
+/// 抓取覆盖指定点的显示器整屏画面，返回 RGBA 图像 + 实际使用的采集方式（同步核心）。
+///
+/// 供主截图流程在并行线程中直接调用；内部无 await 点，GDI/DXGI 每次调用自建
+/// DC/Device，多线程并发安全。
+pub fn capture_monitor_by_rect_blocking(
     min_x: i32,
     min_y: i32,
 ) -> Result<(image::RgbaImage, ZmengCaptureMethod), String> {
@@ -97,6 +100,14 @@ pub async fn capture_monitor_by_rect(
                 .map(|image| (image, ZmengCaptureMethod::Gdi))
         }
     }
+}
+
+/// async 包装（与未来主流程 async 形态一致）
+pub async fn capture_monitor_by_rect(
+    min_x: i32,
+    min_y: i32,
+) -> Result<(image::RgbaImage, ZmengCaptureMethod), String> {
+    capture_monitor_by_rect_blocking(min_x, min_y)
 }
 
 /// 自测：逐屏抓一帧，返回每屏的方式/耗时/校验结果

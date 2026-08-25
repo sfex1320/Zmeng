@@ -12,14 +12,14 @@ mod windows_impl;
 
 #[cfg(target_os = "windows")]
 pub use windows_impl::{
-    capture_monitor_by_rect, list_monitors, self_test, ZmengCaptureMethod, ZmengMonitor,
-    ZmengSelfTestResult,
+    capture_monitor_by_rect, capture_monitor_by_rect_blocking, list_monitors, self_test,
+    ZmengCaptureMethod, ZmengMonitor, ZmengSelfTestResult,
 };
 
 #[cfg(not(target_os = "windows"))]
 pub use stub::{
-    capture_monitor_by_rect, list_monitors, self_test, ZmengCaptureMethod, ZmengMonitor,
-    ZmengSelfTestResult,
+    capture_monitor_by_rect, capture_monitor_by_rect_blocking, list_monitors, self_test,
+    ZmengCaptureMethod, ZmengMonitor, ZmengSelfTestResult,
 };
 
 #[cfg(not(target_os = "windows"))]
@@ -57,6 +57,13 @@ mod stub {
     }
 
     pub async fn capture_monitor_by_rect(
+        _min_x: i32,
+        _min_y: i32,
+    ) -> Result<(image::RgbaImage, ZmengCaptureMethod), String> {
+        Err("zmeng-capture 仅支持 Windows".to_string())
+    }
+
+    pub fn capture_monitor_by_rect_blocking(
         _min_x: i32,
         _min_y: i32,
     ) -> Result<(image::RgbaImage, ZmengCaptureMethod), String> {

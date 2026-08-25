@@ -36,6 +36,9 @@ const NoLayoutDrawLazyRouteImport = createFileRoute('/_noLayout/draw')()
 const NoLayoutClipboardSidebarLazyRouteImport = createFileRoute(
   '/_noLayout/clipboardSidebar',
 )()
+const LayoutAnnotateLabLazyRouteImport = createFileRoute(
+  '/_layout/annotateLab',
+)()
 const LayoutAboutLazyRouteImport = createFileRoute('/_layout/about')()
 const LayoutSettingsIndexLazyRouteImport =
   createFileRoute('/_layout/settings/')()
@@ -140,6 +143,13 @@ const NoLayoutClipboardSidebarLazyRoute =
   } as any).lazy(() =>
     import('./routes/_noLayout/clipboardSidebar.lazy').then((d) => d.Route),
   )
+const LayoutAnnotateLabLazyRoute = LayoutAnnotateLabLazyRouteImport.update({
+  id: '/annotateLab',
+  path: '/annotateLab',
+  getParentRoute: () => LayoutRouteRoute,
+} as any).lazy(() =>
+  import('./routes/_layout/annotateLab.lazy').then((d) => d.Route),
+)
 const LayoutAboutLazyRoute = LayoutAboutLazyRouteImport.update({
   id: '/about',
   path: '/about',
@@ -234,6 +244,7 @@ const LayoutPersonalizationAppearanceRoute =
 
 export interface FileRoutesByFullPath {
   '/about': typeof LayoutAboutLazyRoute
+  '/annotateLab': typeof LayoutAnnotateLabLazyRoute
   '/clipboardSidebar': typeof NoLayoutClipboardSidebarLazyRoute
   '/draw': typeof NoLayoutDrawLazyRoute
   '/fixedContent': typeof NoLayoutFixedContentLazyRoute
@@ -256,6 +267,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/about': typeof LayoutAboutLazyRoute
+  '/annotateLab': typeof LayoutAnnotateLabLazyRoute
   '/clipboardSidebar': typeof NoLayoutClipboardSidebarLazyRoute
   '/draw': typeof NoLayoutDrawLazyRoute
   '/fixedContent': typeof NoLayoutFixedContentLazyRoute
@@ -281,6 +293,7 @@ export interface FileRoutesById {
   '/_layout': typeof LayoutRouteRouteWithChildren
   '/_noLayout': typeof NoLayoutRouteRouteWithChildren
   '/_layout/about': typeof LayoutAboutLazyRoute
+  '/_layout/annotateLab': typeof LayoutAnnotateLabLazyRoute
   '/_noLayout/clipboardSidebar': typeof NoLayoutClipboardSidebarLazyRoute
   '/_noLayout/draw': typeof NoLayoutDrawLazyRoute
   '/_noLayout/fixedContent': typeof NoLayoutFixedContentLazyRoute
@@ -305,6 +318,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/about'
+    | '/annotateLab'
     | '/clipboardSidebar'
     | '/draw'
     | '/fixedContent'
@@ -327,6 +341,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/about'
+    | '/annotateLab'
     | '/clipboardSidebar'
     | '/draw'
     | '/fixedContent'
@@ -351,6 +366,7 @@ export interface FileRouteTypes {
     | '/_layout'
     | '/_noLayout'
     | '/_layout/about'
+    | '/_layout/annotateLab'
     | '/_noLayout/clipboardSidebar'
     | '/_noLayout/draw'
     | '/_noLayout/fixedContent'
@@ -456,6 +472,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NoLayoutClipboardSidebarLazyRouteImport
       parentRoute: typeof NoLayoutRouteRoute
     }
+    '/_layout/annotateLab': {
+      id: '/_layout/annotateLab'
+      path: '/annotateLab'
+      fullPath: '/annotateLab'
+      preLoaderRoute: typeof LayoutAnnotateLabLazyRouteImport
+      parentRoute: typeof LayoutRouteRoute
+    }
     '/_layout/about': {
       id: '/_layout/about'
       path: '/about'
@@ -538,6 +561,7 @@ declare module '@tanstack/react-router' {
 
 interface LayoutRouteRouteChildren {
   LayoutAboutLazyRoute: typeof LayoutAboutLazyRoute
+  LayoutAnnotateLabLazyRoute: typeof LayoutAnnotateLabLazyRoute
   LayoutIndexLazyRoute: typeof LayoutIndexLazyRoute
   LayoutPersonalizationAppearanceRoute: typeof LayoutPersonalizationAppearanceRoute
   LayoutPersonalizationPluginsLazyRoute: typeof LayoutPersonalizationPluginsLazyRoute
@@ -553,6 +577,7 @@ interface LayoutRouteRouteChildren {
 
 const LayoutRouteRouteChildren: LayoutRouteRouteChildren = {
   LayoutAboutLazyRoute: LayoutAboutLazyRoute,
+  LayoutAnnotateLabLazyRoute: LayoutAnnotateLabLazyRoute,
   LayoutIndexLazyRoute: LayoutIndexLazyRoute,
   LayoutPersonalizationAppearanceRoute: LayoutPersonalizationAppearanceRoute,
   LayoutPersonalizationPluginsLazyRoute: LayoutPersonalizationPluginsLazyRoute,
