@@ -51,16 +51,20 @@ pub async fn capture_focused_window(
     correct_hdr_color_algorithm: CorrectHdrColorAlgorithm,
 ) -> Result<(), String> {
     snow_shot_tauri_commands_screenshot::capture_focused_window(
-        move |image| match app.clipboard().write_image(&tauri::image::Image::new(
+        move |image| {
+            // 自写剪贴板前登记标记，剪贴板侧栏监听据此跳过，避免产生重复记录
+            snow_shot_app_shared::mark_clipboard_self_write();
+            match app.clipboard().write_image(&tauri::image::Image::new(
             image.as_bytes(),
             image.width(),
             image.height(),
         )) {
-            Ok(_) => Ok(()),
-            Err(e) => Err(format!(
-                "[capture_focused_window] Failed to write image to clipboard: {}",
-                e
-            )),
+                Ok(_) => Ok(()),
+                Err(e) => Err(format!(
+                    "[capture_focused_window] Failed to write image to clipboard: {}",
+                    e
+                )),
+            }
         },
         file_path,
         copy_to_clipboard,
@@ -129,16 +133,20 @@ pub async fn capture_full_screen(
 ) -> Result<CaptureFullScreenResult, String> {
     snow_shot_tauri_commands_screenshot::capture_full_screen(
         app.clone(),
-        move |image| match app.clipboard().write_image(&tauri::image::Image::new(
+        move |image| {
+            // 自写剪贴板前登记标记，剪贴板侧栏监听据此跳过，避免产生重复记录
+            snow_shot_app_shared::mark_clipboard_self_write();
+            match app.clipboard().write_image(&tauri::image::Image::new(
             image.to_rgba8().as_raw(),
             image.width(),
             image.height(),
         )) {
-            Ok(_) => Ok(()),
-            Err(e) => Err(format!(
-                "[capture_full_screen] Failed to write image to clipboard: {}",
-                e
-            )),
+                Ok(_) => Ok(()),
+                Err(e) => Err(format!(
+                    "[capture_full_screen] Failed to write image to clipboard: {}",
+                    e
+                )),
+            }
         },
         enable_multiple_monitor,
         file_path,

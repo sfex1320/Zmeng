@@ -1,31 +1,10 @@
 import { invoke } from "@tauri-apps/api/core";
 import OpenAI from "openai";
-import { appFetch, getUrl } from "@/services/tools";
-import { getChatModelsWithCache } from "@/services/tools/chat";
+import type { ChatCompletionCreateParamsStreaming } from "openai/resources/chat/completions";
+import { appFetch, qwenThinkingDisableParams } from "@/services/tools";
+import { appError } from "@/utils/log";
+import { createThinkFilter, stripThink } from "@/utils/thinkFilter";
 import type { ChatApiConfig } from "@/types/appSettings";
-
-/** 官方内置模型（通义千问 Flash/Plus/VL Flash 等），免配置、无需 key */
-export const OFFICIAL_API_URI = getUrl("/api/v1");
-
-/** 拉取官方模型并包装成统一的 ChatApiConfig（供剪贴板 AI 直接选用） */
-export async function getOfficialBackends(): Promise<ChatApiConfig[]> {
-	try {
-		const models = await getChatModelsWithCache();
-		if (!models?.length) {
-			return [];
-		}
-		return models.map((m) => ({
-			api_uri: OFFICIAL_API_URI,
-			api_key: "",
-			api_model: m.model,
-			model_name: m.name,
-			support_thinking: m.thinking,
-			support_vision: m.support_vision,
-		}));
-	} catch {
-		return [];
-	}
-}
 
 /** AI 动作预设：对剪贴板内容跑预设提示词，{{INPUT}} 会被替换为内容 */
 export type AiActionPreset = {
@@ -78,7 +57,8 @@ export const defaultAiActions: AiActionPreset[] = [
 	{
 		id: "summarize",
 		name: "总结",
-		prompt: "请用简洁的语言总结以下内容的核心要点，使用条理清晰的中文：\n\n{{INPUT}}",
+		prompt:
+			"请用简洁的语言总结以下内容的核心要点，使用条理清晰的中文：\n\n{{INPUT}}",
 	},
 	{
 		id: "explain",
@@ -93,17 +73,20 @@ export const defaultAiActions: AiActionPreset[] = [
 	{
 		id: "polish",
 		name: "优化",
-		prompt: "请优化以下文本，使其更通顺、专业、地道，保持原意，只输出优化后的文本：\n\n{{INPUT}}",
+		prompt:
+			"请优化以下文本，使其更通顺、专业、地道，保持原意，只输出优化后的文本：\n\n{{INPUT}}",
 	},
 	{
 		id: "shorten",
 		name: "简写",
-		prompt: "请在保留关键信息的前提下，将以下内容精简改写得更短，只输出结果：\n\n{{INPUT}}",
+		prompt:
+			"请在保留关键信息的前提下，将以下内容精简改写得更短，只输出结果：\n\n{{INPUT}}",
 	},
 	{
 		id: "to-json",
 		name: "转 JSON",
-		prompt: "请将以下内容转换为结构化的 JSON，只输出 JSON 代码块，不要任何额外说明：\n\n{{INPUT}}",
+		prompt:
+			"请将以下内容转换为结构化的 JSON，只输出 JSON 代码块，不要任何额外说明：\n\n{{INPUT}}",
 	},
 ];
 
@@ -171,7 +154,9 @@ async function runLocalChat(
 		stream: false,
 	});
 	if (res.status !== 200) {
-		throw new Error(`本地模型返回 HTTP ${res.status}：${res.body.slice(0, 300)}`);
+		throw new Error(
+			`本地模型返回 HTTP ${res.status}：${res.body.slice(0, 300)}`,
+		);
 	}
 	let text = "";
 	try {
@@ -182,7 +167,7 @@ async function runLocalChat(
 	if (signal?.aborted) {
 		return;
 	}
-	onDelta(text);
+	onDelta(stripThink(text));
 }
 
 /**
@@ -202,7 +187,7 @@ export async function runAiAction(
 ): Promise<void> {
 	if (!backend.api_model) {
 		throw new Error(
-			"未设置模型名称，请在「设置 · AI 助手」中为该后端填写模型（如 qwen2.5、gpt-4o-mini）",
+			"未设置模型名称，请在「设置 · 大模型」中为该后端填写模型（如 qwen2.5、gpt-4o-mini）",
 		);
 	}
 
@@ -222,15 +207,28 @@ export async function runAiAction(
 			model: backend.api_model,
 			messages: [{ role: "user", content }],
 			stream: true,
+			// DashScope 系端点默认开思考模式：快捷动作要的是快，关掉避免首字前长时间无输出
+			...qwenThinkingDisableParams(backend.api_uri),
+		} as ChatCompletionCreateParamsStreaming & {
+			enable_thinking?: boolean;
 		},
 		{ signal },
 	);
 
+	// 思考型模型（如 MiniMax-M2）的 <think> 推理内容混在正文流里，过滤只留结果
+	const thinkFilter = createThinkFilter();
 	for await (const event of stream) {
 		const delta = event.choices?.[0]?.delta?.content;
 		if (delta) {
-			onDelta(delta);
+			const visible = thinkFilter.push(delta);
+			if (visible) {
+				onDelta(visible);
+			}
 		}
+	}
+	const tail = thinkFilter.flush();
+	if (tail) {
+		onDelta(tail);
 	}
 }
 
@@ -252,7 +250,7 @@ export async function runAiVisionAction(
 ): Promise<void> {
 	if (!backend.api_model) {
 		throw new Error(
-			"未设置模型名称，请在「设置 · AI 助手」中为该后端填写模型（需支持视觉，如 qwen3-vl、gpt-4o）",
+			"未设置模型名称，请在「设置 · 大模型」中为该后端填写模型（需支持视觉，如 qwen3-vl、gpt-4o）",
 		);
 	}
 
@@ -289,15 +287,28 @@ export async function runAiVisionAction(
 				},
 			],
 			stream: true,
+			// 同 runAiAction：视觉快捷分析关闭思考模式提速
+			...qwenThinkingDisableParams(backend.api_uri),
+		} as ChatCompletionCreateParamsStreaming & {
+			enable_thinking?: boolean;
 		},
 		{ signal },
 	);
 
+	// 同 runAiAction：过滤思考型模型的 <think> 内容
+	const thinkFilter = createThinkFilter();
 	for await (const event of stream) {
 		const delta = event.choices?.[0]?.delta?.content;
 		if (delta) {
-			onDelta(delta);
+			const visible = thinkFilter.push(delta);
+			if (visible) {
+				onDelta(visible);
+			}
 		}
+	}
+	const tail = thinkFilter.flush();
+	if (tail) {
+		onDelta(tail);
 	}
 }
 
@@ -347,9 +358,17 @@ export async function listCloudModels(
 		const res = await appFetch(`${base}/models`, {
 			headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : undefined,
 		});
+		if (!res.ok) {
+			appError(
+				`[listCloudModels] HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`,
+			);
+			return [];
+		}
 		const data = (await res.json()) as { data?: { id: string }[] };
 		return (data.data ?? []).map((m) => m.id).filter(Boolean);
-	} catch {
+	} catch (error) {
+		// 记录真实原因（URL 权限 / 网络 / 代理），不再静默吞掉
+		appError("[listCloudModels] fetch error", error);
 		return [];
 	}
 }
@@ -378,7 +397,9 @@ export async function testBackend(backend: ChatApiConfig): Promise<boolean> {
 			max_completion_tokens: 8,
 		});
 		return Array.isArray(res.choices) && res.choices.length > 0;
-	} catch {
+	} catch (error) {
+		// 记录真实原因（URL 权限 / 网络 / 代理 / 模型名），不再静默吞掉
+		appError("[testBackend] error", error);
 		return false;
 	}
 }

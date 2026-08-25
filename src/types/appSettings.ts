@@ -28,6 +28,8 @@ export enum VideoFormat {
 }
 
 export enum VideoMaxSize {
+	/** 原始分辨率（不降采样） */
+	Original = "original",
 	P2160 = "2160p",
 	P1440 = "1440p",
 	P1080 = "1080p",
@@ -375,6 +377,8 @@ export type AppSettingsData = {
 	};
 	[AppSettingsGroup.SystemCommon]: {
 		autoStart: boolean;
+		/** 开机自启动时以管理员身份运行（Windows 计划任务方式） */
+		adminAutoStart: boolean;
 		autoCheckVersion: boolean;
 		runLog: boolean;
 	};
@@ -391,6 +395,12 @@ export type AppSettingsData = {
 		/** 关闭窗口时自动创建新会话 */
 		autoCreateNewSessionOnCloseWindow: boolean;
 		chatApiConfigList: ChatApiConfig[];
+		/** 用途分配：翻译默认模型（`CUSTOM_MODEL_PREFIX + api_model`，空则取列表第一个） */
+		defaultTranslateModel: string;
+		/** 用途分配：剪贴板 AI 默认模型 */
+		defaultAiModel: string;
+		/** 用途分配：视觉（图片识别）默认模型 */
+		defaultVisionModel: string;
 	};
 	[AppSettingsGroup.FunctionOcr]: {
 		/** 文本识别模型 */

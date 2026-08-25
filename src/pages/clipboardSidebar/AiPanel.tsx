@@ -4,19 +4,18 @@ import {
 	SnippetsOutlined,
 	StopOutlined,
 } from "@ant-design/icons";
-import { Button, Drawer, Empty, message, Segmented, Select, Space } from "antd";
+import { Button, Drawer, Empty, message, Select, Space } from "antd";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { writeText } from "tauri-plugin-clipboard-api";
+import { CUSTOM_MODEL_PREFIX } from "@/constants/components/chat";
 import type { ChatApiConfig } from "@/types/appSettings";
 import {
 	type AiActionPreset,
 	defaultAiActions,
 	defaultImageAiActions,
-	getOfficialBackends,
-	OFFICIAL_API_URI,
 	runAiAction,
 	runAiVisionAction,
 	runTranslate,
@@ -30,8 +29,14 @@ export type AiPanelProps = {
 	input: string;
 	/** 图片模式：待分析图片的 base64 data URL（提供时进入「图片视觉」模式） */
 	image?: string | null;
-	/** 统一的 AI 后端列表（来自 设置 · AI 助手） */
+	/** 统一的 AI 后端列表（来自 设置 · 大模型） */
 	backends: ChatApiConfig[];
+	/** 用途分配：翻译默认模型 */
+	defaultTranslateModel?: string;
+	/** 用途分配：剪贴板 AI 默认模型 */
+	defaultAiModel?: string;
+	/** 用途分配：视觉默认模型 */
+	defaultVisionModel?: string;
 	/** 翻译目标语言 */
 	translateTargetLang: string;
 	/** 初始动作（translate 表示翻译） */
@@ -46,6 +51,9 @@ export const AiPanel: React.FC<AiPanelProps> = ({
 	input,
 	image,
 	backends,
+	defaultTranslateModel,
+	defaultAiModel,
+	defaultVisionModel,
 	translateTargetLang,
 	initialAction,
 	onPaste,
@@ -59,31 +67,36 @@ export const AiPanel: React.FC<AiPanelProps> = ({
 		(isImageMode ? undefined : initialAction) ?? actions[0].id,
 	);
 	const [backendIdx, setBackendIdx] = useState<number>(0);
+	// 用户手动切换过模型后不再跟随默认值
+	const backendTouchedRef = useRef(false);
 	const [result, setResult] = useState("");
 	const [loading, setLoading] = useState(false);
 	const abortRef = useRef<AbortController | null>(null);
 	// 本次挂载是否已自动运行过初始动作（避免重复触发）
 	const autoRanRef = useRef(false);
 
-	// 官方内置模型（通义千问 Flash/Plus/VL Flash），打开面板时拉取一次
-	const [officialBackends, setOfficialBackends] = useState<ChatApiConfig[]>([]);
-	useEffect(() => {
-		if (open) {
-			getOfficialBackends().then(setOfficialBackends);
-		}
-	}, [open]);
-
-	// 自定义后端 + 官方模型合并：用户两者都能选
-	const allBackends = useMemo(
-		() => [...backends, ...officialBackends],
-		[backends, officialBackends],
-	);
-
-	// 图片模式只列出「支持视觉」的后端（官方通义千问 VL Flash 或自配 gpt-4o / llava 等）
 	const usableBackends = useMemo(
-		() => (isImageMode ? allBackends.filter((b) => b.support_vision) : allBackends),
-		[allBackends, isImageMode],
+		() => (isImageMode ? backends.filter((b) => b.support_vision) : backends),
+		[backends, isImageMode],
 	);
+
+	// 按用途分配选中默认模型：图片→视觉模型；翻译→翻译模型；其余→AI 模型
+	const defaultModelType = isImageMode
+		? (defaultVisionModel ?? "")
+		: initialAction === "translate"
+			? (defaultTranslateModel ?? "")
+			: (defaultAiModel ?? "");
+	useEffect(() => {
+		if (backendTouchedRef.current || !defaultModelType) {
+			return;
+		}
+		const idx = usableBackends.findIndex(
+			(b) => `${CUSTOM_MODEL_PREFIX}${b.api_model}` === defaultModelType,
+		);
+		if (idx >= 0 && idx !== backendIdx) {
+			setBackendIdx(idx);
+		}
+	}, [defaultModelType, usableBackends, backendIdx]);
 
 	const currentBackend: ChatApiConfig | undefined = useMemo(
 		() => usableBackends[backendIdx] ?? usableBackends[0],
@@ -95,8 +108,8 @@ export const AiPanel: React.FC<AiPanelProps> = ({
 			if (!currentBackend) {
 				message.error(
 					isImageMode
-						? "未找到支持视觉的模型，请使用官方「通义千问 VL Flash」或在「设置 · AI 助手」中开启某后端的「支持视觉」"
-						: "请先在「设置 · AI 助手」中添加并配置一个 AI 后端",
+						? "未找到支持视觉的模型，请到「设置 · 大模型」为某个后端开启「支持视觉」（如 gpt-4o、qwen3-vl、llava）"
+						: "请先到「设置 · 大模型」添加并配置一个 AI 后端",
 				);
 				return;
 			}
@@ -145,7 +158,15 @@ export const AiPanel: React.FC<AiPanelProps> = ({
 				setLoading(false);
 			}
 		},
-		[currentBackend, isImageMode, image, actionId, actions, input, translateTargetLang],
+		[
+			currentBackend,
+			isImageMode,
+			image,
+			actionId,
+			actions,
+			input,
+			translateTargetLang,
+		],
 	);
 
 	// #9 可用后端列表变短时收敛下标，避免 Select 显示与实际运行后端不一致
@@ -192,7 +213,6 @@ export const AiPanel: React.FC<AiPanelProps> = ({
 					padding: 8,
 				}}
 			>
-				{/** biome-ignore lint/a11y/useAltText: 剪贴板图片预览 */}
 				<img
 					src={image}
 					alt="待分析图片"
@@ -228,36 +248,56 @@ export const AiPanel: React.FC<AiPanelProps> = ({
 				}}
 			>
 				{imagePreview}
-				{usableBackends.length === 0 ? (
-					<Empty
-						description={
-							isImageMode
-								? "未找到支持视觉的模型。请使用官方「通义千问 VL Flash」，或到「设置 · AI 助手」为某个后端开启「支持视觉」（如 gpt-4o、qwen3-vl、llava）"
-								: "正在加载模型…若长时间无内容，可到「设置 · AI 助手」添加 Ollama 或云端模型"
-						}
-						style={{ marginTop: 40 }}
-					/>
+					{usableBackends.length === 0 ? (
+						<Empty
+							description={
+								isImageMode
+									? "未找到支持视觉的模型。请到「设置 · 大模型」为某个后端开启「支持视觉」（如 gpt-4o、qwen3-vl、llava），或在本地 Ollama 拉取视觉模型"
+									: "正在加载模型…若长时间无内容，可到「设置 · 大模型」添加 Ollama 或云端模型"
+							}
+							style={{ marginTop: 40 }}
+						/>
 				) : (
 					<>
-						<Segmented
-							options={segmentOptions}
-							value={actionId}
-							onChange={(v) => {
-								setActionId(v as string);
-								run(v as string);
+						{/* 动作分类：自动换行按钮组（Segmented 不支持换行，侧栏较窄时会溢出） */}
+						<div
+							style={{
+								display: "flex",
+								flexWrap: "wrap",
+								gap: 6,
 							}}
-						/>
+						>
+							{segmentOptions.map((opt) => (
+								<Button
+									key={opt.value}
+									size="small"
+									type={actionId === opt.value ? "primary" : "default"}
+									onClick={() => {
+										if (actionId === opt.value) {
+											return;
+										}
+										setActionId(opt.value);
+										run(opt.value);
+									}}
+								>
+									{opt.label}
+								</Button>
+							))}
+						</div>
 
 						<Space wrap size={8}>
 							<Select
 								size="small"
 								style={{ minWidth: 220 }}
 								value={backendIdx}
-								onChange={setBackendIdx}
+								onChange={(idx) => {
+									backendTouchedRef.current = true;
+									setBackendIdx(idx);
+								}}
 								options={usableBackends.map((b, i) => ({
 									label: `${b.model_name || "未命名"}${
 										b.api_model ? ` · ${b.api_model}` : "（未设模型）"
-									}${b.api_uri === OFFICIAL_API_URI ? "（官方）" : ""}`,
+									}`,
 									value: i,
 								}))}
 							/>
@@ -308,9 +348,13 @@ export const AiPanel: React.FC<AiPanelProps> = ({
 								size="small"
 								disabled={!result}
 								onClick={async () => {
-									suppressClipboardCapture();
-									await writeText(result);
-									message.success("已复制结果");
+									try {
+										suppressClipboardCapture();
+										await writeText(result);
+										message.success("已复制结果");
+									} catch {
+										message.error("复制失败，请重试");
+									}
 								}}
 							>
 								复制
@@ -321,7 +365,11 @@ export const AiPanel: React.FC<AiPanelProps> = ({
 								type="primary"
 								disabled={!result || !onPaste}
 								onClick={async () => {
-									await onPaste?.(result);
+									try {
+										await onPaste?.(result);
+									} catch {
+										message.error("粘贴失败，请重试");
+									}
 								}}
 							>
 								粘贴到当前应用

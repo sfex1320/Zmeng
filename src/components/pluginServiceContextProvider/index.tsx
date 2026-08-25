@@ -5,10 +5,10 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
 	pluginGetPluginsStatus,
 	pluginInit,
+	pluginInstallPlugin,
 	pluginRegisterPlugin,
 } from "@/commands/plugin";
 import {
-	PLUGIN_ID_AI_CHAT,
 	PLUGIN_ID_FFMPEG,
 	PLUGIN_ID_RAPID_OCR,
 	PLUGIN_ID_TRANSLATE,
@@ -46,10 +46,6 @@ export const PluginServiceContextProvider: React.FC<{
 			},
 			{
 				id: PLUGIN_ID_TRANSLATE,
-				file_list: [],
-			},
-			{
-				id: PLUGIN_ID_AI_CHAT,
 				file_list: [],
 			},
 		];
@@ -109,6 +105,21 @@ export const PluginServiceContextProvider: React.FC<{
 						}
 					}),
 				);
+
+				// 后台自动安装：rapid_ocr 随包 models 目录存在时瞬时完成（本地播种）；
+				// translate 为空标记插件，创建目录即就绪（截图 OCR 翻译入口依赖它）
+				pluginInstallPlugin(PLUGIN_ID_RAPID_OCR, false).catch((error) => {
+					appError(
+						"[pluginServiceContextProvider] auto install rapid_ocr failed",
+						error,
+					);
+				});
+				pluginInstallPlugin(PLUGIN_ID_TRANSLATE, false).catch((error) => {
+					appError(
+						"[pluginServiceContextProvider] auto install translate failed",
+						error,
+					);
+				});
 			}
 
 			initServiceReadyRef.current = true;

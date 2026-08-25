@@ -25,7 +25,7 @@ import {
 	useTranslationRequest,
 } from "@/core/translations";
 import { useStateRef } from "@/hooks/useStateRef";
-import { ModelSelectLabel } from "@/pages/tools/chat/components/modelSelectLabel";
+import { ModelSelectLabel } from "@/components/modelSelectLabel";
 import { TranslationApiType } from "@/types/appSettings";
 import { TranslationDomain } from "@/types/servies/translation";
 import { writeTextToClipboard } from "@/utils/clipboard";

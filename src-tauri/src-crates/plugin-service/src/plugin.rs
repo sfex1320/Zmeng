@@ -113,6 +113,53 @@ impl Plugin {
             .unwrap()
     }
 
+    /// 随包分发的插件目录：<exe 目录>/models/<version>/<name>（离线安装用）
+    fn get_local_seed_dir(&self) -> Option<PathBuf> {
+        let exe_path = std::env::current_exe().ok()?;
+        let exe_dir = exe_path.parent()?;
+        let seed_dir = exe_dir.join("models").join(&self.relative_path);
+        if seed_dir.is_dir()
+            && self
+                .file_list
+                .iter()
+                .all(|file| seed_dir.join(file).is_file())
+        {
+            Some(seed_dir)
+        } else {
+            None
+        }
+    }
+
+    /// 从随包目录递归拷贝插件文件到插件安装目录
+    async fn seed_from_local(&self) -> Result<(), String> {
+        let seed_dir = match self.get_local_seed_dir() {
+            Some(dir) => dir,
+            None => return Err("[Plugin::seed_from_local] no local seed".to_string()),
+        };
+
+        let plugin_dir = self.get_plugin_dir();
+        if plugin_dir.exists() {
+            match tokio::fs::remove_dir_all(&plugin_dir).await {
+                Ok(_) => (),
+                Err(e) => {
+                    return Err(format!(
+                        "[Plugin::seed_from_local] Failed to clear plugin directory: {}",
+                        e
+                    ));
+                }
+            }
+        }
+
+        copy_dir_recursive(&seed_dir, &plugin_dir).await?;
+        log::info!(
+            "[Plugin::seed_from_local] Seeded plugin {} from {}",
+            self.name,
+            seed_dir.display()
+        );
+
+        Ok(())
+    }
+
     async fn set_status(&self, status: PluginStatus) {
         let current_status = self.get_status().await;
         if current_status != status {
@@ -481,6 +528,12 @@ impl Plugin {
             self.get_plugin_download_url()
         );
 
+        // 优先使用随包分发/本地放置的插件文件（<exe>/models），避免依赖在线下载
+        if self.seed_from_local().await.is_ok() {
+            self.set_status(PluginStatus::Installed).await;
+            return Ok(());
+        }
+
         // 下载插件
         self.set_status(PluginStatus::Downloading).await;
         self.download().await?;
@@ -527,4 +580,48 @@ impl Plugin {
 
         Ok(())
     }
+}
+
+/// 递归拷贝目录（async 递归需 Box::pin 引入间接层）
+fn copy_dir_recursive<'a>(
+    src: &'a Path,
+    dest: &'a Path,
+) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), String>> + Send + 'a>> {
+    Box::pin(async move {
+        tokio::fs::create_dir_all(dest)
+            .await
+            .map_err(|e| format!("[copy_dir_recursive] create dest failed: {}", e))?;
+
+        let mut dir = tokio::fs::read_dir(src)
+            .await
+            .map_err(|e| format!("[copy_dir_recursive] read src failed: {}", e))?;
+
+        while let Some(entry) = dir
+            .next_entry()
+            .await
+            .map_err(|e| format!("[copy_dir_recursive] read entry failed: {}", e))?
+        {
+            let file_type = entry
+                .file_type()
+                .await
+                .map_err(|e| format!("[copy_dir_recursive] get file type failed: {}", e))?;
+            let target = dest.join(entry.file_name());
+
+            if file_type.is_dir() {
+                copy_dir_recursive(&entry.path(), &target).await?;
+            } else {
+                tokio::fs::copy(entry.path(), &target)
+                    .await
+                    .map_err(|e| {
+                        format!(
+                            "[copy_dir_recursive] copy file {} failed: {}",
+                            entry.path().display(),
+                            e
+                        )
+                    })?;
+            }
+        }
+
+        Ok(())
+    })
 }

@@ -3,6 +3,36 @@ use enigo::Settings;
 use enigo::{Direction, Key, Keyboard};
 use serde::Deserialize;
 use serde::Serialize;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::{SystemTime, UNIX_EPOCH};
+
+/// 全局剪贴板自写标记：本应用任何窗口/任何侧（前端或 Rust）发起剪贴板写入前登记时间戳。
+/// 剪贴板监听侧收到更新后查询该标记，在时间窗口内视为自写并跳过，
+/// 解决「一次截图产生两条记录」（CF_DIB 与 PNG 两次写入、跨窗口无法用 JS 变量抑制）的问题。
+static CLIPBOARD_SELF_WRITE_AT: AtomicU64 = AtomicU64::new(0);
+
+/// 自写标记的有效窗口（毫秒）
+const CLIPBOARD_SELF_WRITE_WINDOW_MS: u64 = 1500;
+
+pub fn mark_clipboard_self_write() {
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0);
+    CLIPBOARD_SELF_WRITE_AT.store(now, Ordering::SeqCst);
+}
+
+pub fn is_clipboard_self_write_recent() -> bool {
+    let at = CLIPBOARD_SELF_WRITE_AT.load(Ordering::SeqCst);
+    if at == 0 {
+        return false;
+    }
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0);
+    now.saturating_sub(at) < CLIPBOARD_SELF_WRITE_WINDOW_MS
+}
 
 pub struct EnigoManager {
     pub enigo: Option<Enigo>,

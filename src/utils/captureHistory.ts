@@ -5,6 +5,7 @@ import type {
 } from "@mg-chao/excalidraw/element/types";
 import type { AppState } from "@mg-chao/excalidraw/types";
 import { join as joinPath } from "@tauri-apps/api/path";
+import dayjs from "dayjs";
 import { retainDirFiles } from "@/commands/core";
 import {
 	copyFile,
@@ -102,7 +103,10 @@ export class CaptureHistory {
 		}
 
 		const timestamp = Date.now();
-		const fileName = `${timestamp}${fileExtension}`;
+		// 文件名带「年-月-日_时-分-秒」前缀：资源管理器默认按名称排序即按时间排序，
+		// 也能直观看出截图时间（旧版纯毫秒时间戳无法辨认先后）
+		const datePrefix = dayjs(timestamp).format("YYYY-MM-DD_HH-mm-ss");
+		const fileName = `${datePrefix}${fileExtension}`;
 
 		return {
 			id: timestamp.toString(),
@@ -123,7 +127,7 @@ export class CaptureHistory {
 					} as CaptureHistoryItem["excalidraw_app_state"])
 				: undefined,
 			capture_result_file_name: captureResult
-				? `${timestamp}_capture_result.png`
+				? `${datePrefix}_capture_result.png`
 				: undefined,
 			source,
 		};

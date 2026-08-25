@@ -36,7 +36,6 @@ import { showMainWindow } from "@/commands/videoRecord";
 import { OcrTranslateIcon } from "@/components/icons";
 import { INIT_CONTAINER_KEY } from "@/components/imageLayer/actions";
 import {
-	PLUGIN_ID_AI_CHAT,
 	PLUGIN_ID_RAPID_OCR,
 	PLUGIN_ID_TRANSLATE,
 } from "@/constants/pluginService";
@@ -298,20 +297,13 @@ const FixedContentCoreInner: React.FC<{
 			isReadyStatus?.(PLUGIN_ID_TRANSLATE)
 		);
 	}, [fixedContentType, enableSelectText, ocrResult, isReadyStatus]);
+	// 视觉模型改为用户自配后端，不再依赖插件就绪
 	const enableVisionModelHtml = useMemo(() => {
-		return (
-			getSelectTextMode(fixedContentType) === "ocr" &&
-			enableSelectText &&
-			isReadyStatus?.(PLUGIN_ID_AI_CHAT)
-		);
-	}, [fixedContentType, enableSelectText, isReadyStatus]);
+		return getSelectTextMode(fixedContentType) === "ocr" && enableSelectText;
+	}, [fixedContentType, enableSelectText]);
 	const enableVisionModelMarkdown = useMemo(() => {
-		return (
-			getSelectTextMode(fixedContentType) === "ocr" &&
-			enableSelectText &&
-			isReadyStatus?.(PLUGIN_ID_AI_CHAT)
-		);
-	}, [fixedContentType, enableSelectText, isReadyStatus]);
+		return getSelectTextMode(fixedContentType) === "ocr" && enableSelectText;
+	}, [fixedContentType, enableSelectText]);
 
 	const [textContent, setTextContent, textContentRef] = useStateRef<
 		| {

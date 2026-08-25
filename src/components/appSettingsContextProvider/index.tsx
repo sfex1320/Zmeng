@@ -23,6 +23,12 @@ import { defaultAppSettingsData } from "@/constants/appSettings";
 import { defaultCommonKeyEventSettings } from "@/constants/commonKeyEvent";
 import { getThemePreset } from "@/constants/themePresets";
 import { defaultDrawToolbarKeyEventSettings } from "@/constants/drawToolbarKeyEvent";
+import { CUSTOM_MODEL_PREFIX } from "@/constants/components/chat";
+import {
+	isMomoBackend,
+	MOMO_DEFAULT_MODEL_TYPE,
+	momoBackendPreset,
+} from "@/constants/llmBackends";
 import { PLUGIN_ID_RAPID_OCR } from "@/constants/pluginService";
 import { AppContext } from "@/contexts/appContext";
 import {
@@ -38,6 +44,7 @@ import { messages } from "@/messages/map";
 import {
 	AppSettingsControlNode,
 	type AppSettingsData,
+	type ChatApiConfig,
 	type AppSettingsFixedContentInitialPosition,
 	AppSettingsGroup,
 	AppSettingsLanguage,
@@ -73,6 +80,97 @@ import { appError, appWarn, formatErrorDetails } from "@/utils/log";
 const getFilePath = async (group: AppSettingsGroup) => {
 	const configDirPath = await getConfigDirPath();
 	return `${configDirPath}/${group}.json`;
+};
+
+/**
+ * ZMENG LLM 配置迁移 v1（文件级、幂等）：
+ * ① 旧配置补入 momo 中转站后端；② 补默认用途分配；③ 官方数字翻译类型迁移为自定义 LLM。
+ * 直接读写文件 + 独立标记文件，避免走 updateAppSettings 状态流在启动期与
+ * reload/跨窗口同步产生竞态（曾导致 defaults 写入成功而后端列表被旧值覆盖）。
+ * 用户手动删除 momo 后：标记已存在，不会再次注入。
+ */
+const migrateLlmSettingsV1 = async () => {
+	const configDirPath = await getConfigDirPath();
+	const markerPath = `${configDirPath}/llm_migration_v1`;
+	// 注意：text_file_read 对不存在的文件返回空串而不抛错，空串视为未迁移
+	const marker = await textFileRead(markerPath).catch(() => "");
+	if (marker.trim() !== "") {
+		return; // 已迁移过
+	}
+
+	const momoType = MOMO_DEFAULT_MODEL_TYPE;
+	const typeOf = (config: ChatApiConfig) =>
+		`${CUSTOM_MODEL_PREFIX}${config.api_model}`;
+
+	try {
+		// ① functionChat：注入 momo + 补默认用途分配
+		try {
+			const chatRaw = await textFileRead(
+				await getFilePath(AppSettingsGroup.FunctionChat),
+			);
+			const chat = JSON.parse(chatRaw) as AppSettingsData[AppSettingsGroup.FunctionChat];
+			const list = Array.isArray(chat.chatApiConfigList)
+				? [...chat.chatApiConfigList]
+				: [];
+			const hadMomo = list.some(isMomoBackend);
+			if (!hadMomo) {
+				list.push(momoBackendPreset);
+			}
+			const typeExists = (t: string) => list.some((c) => typeOf(c) === t);
+			const visionBackend = list.find((c) => c.support_vision);
+			// 首次注入 momo 时默认用途直接指向 momo；已有 momo 则尊重用户已选
+			const next = {
+				...chat,
+				chatApiConfigList: list,
+				defaultTranslateModel:
+					hadMomo && typeExists(chat.defaultTranslateModel ?? "")
+						? (chat.defaultTranslateModel ?? "")
+						: momoType,
+				defaultAiModel:
+					hadMomo && typeExists(chat.defaultAiModel ?? "")
+						? (chat.defaultAiModel ?? "")
+						: momoType,
+				defaultVisionModel:
+					chat.defaultVisionModel && typeExists(chat.defaultVisionModel)
+						? chat.defaultVisionModel
+						: (visionBackend ? typeOf(visionBackend) : ""),
+			};
+			await textFileWrite(
+				await getFilePath(AppSettingsGroup.FunctionChat),
+				JSON.stringify(next),
+			);
+		} catch (error) {
+			appWarn("[migrateLlmSettingsV1] functionChat migrate failed", error);
+		}
+
+		// ② 官方数字翻译类型 → momo 自定义模型
+		for (const group of [
+			AppSettingsGroup.FunctionTranslation,
+			AppSettingsGroup.FunctionTranslationCache,
+		]) {
+			try {
+				const raw = await textFileRead(await getFilePath(group));
+				const data = JSON.parse(raw) as Record<string, unknown>;
+				const typeKey =
+					group === AppSettingsGroup.FunctionTranslation
+						? "translationType"
+						: "cacheTranslationType";
+				if (typeof data[typeKey] === "number") {
+					data[typeKey] = momoType;
+					await textFileWrite(await getFilePath(group), JSON.stringify(data));
+				}
+			} catch (error) {
+				appWarn(`[migrateLlmSettingsV1] ${group} migrate failed`, error);
+			}
+		}
+	} finally {
+		// 无论成败都写标记，避免每次启动反复尝试
+		try {
+			await textFileWrite(markerPath, new Date().toISOString());
+		} catch {
+			// ignore
+		}
+	}
 };
 
 const AppSettingsContextProviderCore: React.FC<{
@@ -720,6 +818,11 @@ const AppSettingsContextProviderCore: React.FC<{
 							? newSettings.autoStart
 							: (prevSettings?.autoStart ??
 								defaultAppSettingsData[group].autoStart),
+					adminAutoStart:
+						typeof newSettings?.adminAutoStart === "boolean"
+							? newSettings.adminAutoStart
+							: (prevSettings?.adminAutoStart ??
+								defaultAppSettingsData[group].adminAutoStart),
 					autoCheckVersion:
 						typeof newSettings?.autoCheckVersion === "boolean"
 							? newSettings.autoCheckVersion
@@ -823,6 +926,18 @@ const AppSettingsContextProviderCore: React.FC<{
 							: (prevSettings?.autoCreateNewSessionOnCloseWindow ??
 								defaultAppSettingsData[group]
 									.autoCreateNewSessionOnCloseWindow),
+					defaultTranslateModel:
+						typeof newSettings?.defaultTranslateModel === "string"
+							? newSettings.defaultTranslateModel
+							: (prevSettings?.defaultTranslateModel ?? ""),
+					defaultAiModel:
+						typeof newSettings?.defaultAiModel === "string"
+							? newSettings.defaultAiModel
+							: (prevSettings?.defaultAiModel ?? ""),
+					defaultVisionModel:
+						typeof newSettings?.defaultVisionModel === "string"
+							? newSettings.defaultVisionModel
+							: (prevSettings?.defaultVisionModel ?? ""),
 				};
 			} else if (group === AppSettingsGroup.FunctionTranslationCache) {
 				newSettings = newSettings as AppSettingsData[typeof group];
@@ -1423,6 +1538,11 @@ const AppSettingsContextProviderCore: React.FC<{
 			return;
 		}
 
+		// ZMENG：文件级 LLM 迁移（幂等标记），必须在读取设置文件之前执行
+		if (appWindowRef.current?.label === "main") {
+			await migrateLlmSettingsV1();
+		}
+
 		await Promise.all(
 			(groups as AppSettingsGroup[]).map(async (group) => {
 				let fileContent = "";
@@ -1468,6 +1588,54 @@ const AppSettingsContextProviderCore: React.FC<{
 		// 注意：上面的循环已用 ignoreState/ignorePublisher 调用把各组合并进 appSettingsRef，
 		// 旧代码的 isEqual 门控会让真正变更时反而不发布，导致跨窗口不同步。
 		setAppSettings(settings);
+
+		// 用途分配自愈：后端被删除导致默认模型失效时，回退到第一个可用后端
+		// （momo 注入由启动时的 migrateLlmSettingsV1 负责，此处不注入）
+		if (appWindowRef.current?.label === "main") {
+			const chatSettings = appSettingsRef.current[AppSettingsGroup.FunctionChat];
+			const list = chatSettings.chatApiConfigList;
+			const typeExists = (type: string) =>
+				list.some(
+					(item) => `${CUSTOM_MODEL_PREFIX}${item.api_model}` === type,
+				);
+
+			const nextTranslateModel =
+				typeExists(chatSettings.defaultTranslateModel) ||
+				chatSettings.defaultTranslateModel === ""
+					? chatSettings.defaultTranslateModel
+					: (list[0] ? `${CUSTOM_MODEL_PREFIX}${list[0].api_model}` : "");
+			const nextAiModel =
+				typeExists(chatSettings.defaultAiModel) ||
+				chatSettings.defaultAiModel === ""
+					? chatSettings.defaultAiModel
+					: (list[0] ? `${CUSTOM_MODEL_PREFIX}${list[0].api_model}` : "");
+			const visionBackend = list.find((item) => item.support_vision);
+			const nextVisionModel =
+				typeExists(chatSettings.defaultVisionModel) ||
+				chatSettings.defaultVisionModel === ""
+					? chatSettings.defaultVisionModel
+					: (visionBackend
+							? `${CUSTOM_MODEL_PREFIX}${visionBackend.api_model}`
+							: "");
+
+			if (
+				nextTranslateModel !== chatSettings.defaultTranslateModel ||
+				nextAiModel !== chatSettings.defaultAiModel ||
+				nextVisionModel !== chatSettings.defaultVisionModel
+			) {
+				updateAppSettings(
+					AppSettingsGroup.FunctionChat,
+					{
+						defaultTranslateModel: nextTranslateModel,
+						defaultAiModel: nextAiModel,
+						defaultVisionModel: nextVisionModel,
+					},
+					false,
+					true,
+					true,
+				);
+			}
+		}
 
 		setAppSettingsLoadingPublisher(false);
 	}, [setAppSettingsLoadingPublisher, updateAppSettings, setAppSettings]);

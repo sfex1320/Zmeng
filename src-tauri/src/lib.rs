@@ -409,6 +409,8 @@ fn build_and_run_app(is_first_attempt: bool) -> AppRunOutcome {
             core::get_active_window_info,
             core::capture_foreground_window,
             core::paste_to_active_window,
+            core::clipboard_self_write_mark,
+            core::clipboard_self_write_recent,
             core::ai_local_request,
             core::prepare_drag_image,
             core::prepare_drag_files,

@@ -1,4 +1,4 @@
-import { convertFileSrc } from "@tauri-apps/api/core";
+import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import {
 	onSomethingUpdate,
 	readFiles,
@@ -6,6 +6,7 @@ import {
 	readImageBase64,
 	readText,
 	startListening,
+	stopMonitor,
 } from "tauri-plugin-clipboard-api";
 import {
 	getActiveWindowInfo,
@@ -85,9 +86,18 @@ export async function startClipboardMonitor(
 	}
 
 	unSomething = await onSomethingUpdate(async (types) => {
-		// 自写抑制：跳过由侧栏自身写剪贴板触发的更新
+		// 自写抑制（本窗口）：跳过由侧栏自身写剪贴板触发的更新
 		if (Date.now() < suppressUntil) {
 			return;
+		}
+		// 自写抑制（跨窗口）：截图窗口/Rust 侧写入前会在全局登记标记，
+		// 避免一次截图因 CF_DIB + PNG 两次写入产生两条内容不同的重复记录
+		try {
+			if (await invoke<boolean>("clipboard_self_write_recent")) {
+				return;
+			}
+		} catch {
+			// 命令不可用时按原逻辑继续
 		}
 		try {
 			const src = await getActiveWindowInfo().catch(() => ({
@@ -116,9 +126,7 @@ export async function startClipboardMonitor(
 						...base,
 						type: "files",
 						files,
-						filePreview: previewPath
-							? convertFileSrc(previewPath)
-							: undefined,
+						filePreview: previewPath ? convertFileSrc(previewPath) : undefined,
 					});
 				}
 				return;
@@ -170,7 +178,13 @@ export async function startClipboardMonitor(
 			// ignore
 		}
 		try {
-			stopListen?.();
+			// startListening 失败（如已在运行）时拿不到它返回的停止句柄：
+			// 兜底直接停止 OS 级监视线程，确保监听随页面销毁彻底回收
+			if (stopListen) {
+				stopListen();
+			} else {
+				stopMonitor();
+			}
 		} catch {
 			// ignore
 		}

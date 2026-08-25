@@ -596,6 +596,7 @@ pub fn encode_image(image: &image::DynamicImage, encoder: ImageEncoder) -> Vec<u
 pub fn overlay_image_ptr(
     image_pixels: *mut u8,
     image_width: usize,
+    image_height: usize,
     target_image: &image::DynamicImage,
     offset_x: usize,
     offset_y: usize,
@@ -608,11 +609,27 @@ pub fn overlay_image_ptr(
     let target_image_pixels = target_image.as_bytes();
     let target_image_pixels_ptr = target_image_pixels.as_ptr() as usize;
 
+    // 边界钳制：偏移或尺寸异常时裁剪到目标画布范围内，
+    // 避免越界写（此前一旦显示器偏移计算异常就是未定义行为/崩溃）
+    if offset_x >= image_width || offset_y >= image_height {
+        log::error!(
+            "[overlay_image_ptr] offset out of bounds, offset: ({}, {}), image: {}x{}",
+            offset_x,
+            offset_y,
+            image_width,
+            image_height
+        );
+        return;
+    }
+
+    let copy_width = target_image_width.min(image_width - offset_x);
+    let copy_height = target_image_height.min(image_height - offset_y);
+
     let image_base_index = offset_y * image_width * channel_count + offset_x * channel_count;
 
     // 多线程提升较小
     // 先保留
-    (0..target_image_height)
+    (0..copy_height)
         .into_par_iter()
         .for_each(|y| unsafe {
             let image_row_ptr = (image_pixels_ptr as *mut u8)
@@ -623,7 +640,7 @@ pub fn overlay_image_ptr(
             std::ptr::copy_nonoverlapping(
                 target_image_row_ptr,
                 image_row_ptr,
-                target_image_width * channel_count,
+                copy_width * channel_count,
             );
         });
 }
@@ -631,6 +648,7 @@ pub fn overlay_image_ptr(
 pub fn overlay_image(
     image_pixels: &mut Vec<u8>,
     image_width: usize,
+    image_height: usize,
     target_image: &image::DynamicImage,
     offset_x: usize,
     offset_y: usize,
@@ -639,6 +657,7 @@ pub fn overlay_image(
     overlay_image_ptr(
         image_pixels.as_mut_ptr(),
         image_width,
+        image_height,
         target_image,
         offset_x,
         offset_y,
@@ -659,6 +678,9 @@ pub async fn write_bitmap_image_to_clipboard_core(
         use clipboard_win::{Setter, formats, types::BITMAPINFOHEADER};
         use rayon::prelude::*;
         use std::mem;
+
+        // 自写剪贴板前登记标记，剪贴板侧栏监听据此跳过，避免产生重复记录
+        snow_shot_app_shared::mark_clipboard_self_write();
 
         // 计算 DIB 数据大小：BITMAPINFOHEADER + 像素数据
         let header_size = mem::size_of::<BITMAPINFOHEADER>();

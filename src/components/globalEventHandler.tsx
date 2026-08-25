@@ -19,17 +19,6 @@ const GlobalEventHandlerCore: React.FC = () => {
 	useEffect(() => {
 		const listenerIdList: number[] = [];
 		listenerIdList.push(
-			addListener("execute-chat", () => {
-				showWindow();
-				router.navigate({ to: `/tools/chat?t=${Date.now()}` });
-			}),
-			addListener("execute-chat-selected-text", async () => {
-				const text = (await getSelectedText()).substring(0, 10000);
-				await showWindow();
-				router.navigate({
-					to: `/tools/chat?selectText=${encodeParamsValue(text)}&t=${Date.now()}`,
-				});
-			}),
 			addListener("execute-translate", () => {
 				showWindow();
 				router.navigate({ to: `/tools/translation?t=${Date.now()}` });

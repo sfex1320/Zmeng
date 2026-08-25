@@ -14,7 +14,6 @@ import {
 	createFullScreenDrawWindow,
 } from "@/commands/core";
 import {
-	PLUGIN_ID_AI_CHAT,
 	PLUGIN_ID_FFMPEG,
 	PLUGIN_ID_RAPID_OCR,
 	PLUGIN_ID_TRANSLATE,
@@ -29,8 +28,6 @@ import {
 	executeScreenshotFocusedWindow,
 } from "@/functions/screenshot";
 import {
-	executeChat,
-	executeChatSelectedText,
 	executeTranslate,
 	executeTranslateSelectedText,
 	openCaptureHistory,
@@ -311,40 +308,6 @@ const TrayIconLoaderComponent = () => {
 						executeScreenshot(ScreenshotType.CaptureFullScreen);
 					},
 				},
-				...(isReadyStatus(PLUGIN_ID_AI_CHAT)
-					? [
-							{
-								item: "Separator",
-							} as unknown as MenuItem,
-							{
-								id: `${appWindow.label}-chat`,
-								text: intl.formatMessage({ id: "home.chat" }),
-								accelerator: disableShortcut
-									? undefined
-									: formatKey(shortcutKeys[AppFunction.Chat].shortcutKey),
-								action: async () => {
-									executeChat();
-								},
-							},
-							...(shortcutKeys[AppFunction.ChatSelectText].shortcutKey
-								? [
-										{
-											id: `${appWindow.label}-chat-selectText`,
-											text: intl.formatMessage({ id: "home.chatSelectText" }),
-											accelerator: disableShortcut
-												? undefined
-												: formatKey(
-														shortcutKeys[AppFunction.ChatSelectText]
-															.shortcutKey,
-													),
-											action: async () => {
-												executeChatSelectedText();
-											},
-										},
-									]
-								: []),
-						]
-					: []),
 				...(isReadyStatus(PLUGIN_ID_TRANSLATE)
 					? [
 							{
@@ -524,16 +487,22 @@ const TrayIconLoaderComponent = () => {
 			icon: iconImage
 				? iconImage
 				: ((await (async () => {
-						let targetDefaultIcon = defaultIcon;
-						if (currentTheme === AppSettingsTheme.Dark && defaultIconDark) {
-							targetDefaultIcon = defaultIconDark;
+						// 便携版可能缺少 app-icons 资源目录：加载失败时回退到内嵌窗口图标，
+						// 保证托盘始终有入口（否则应用驻留后台却无任何可见图标）
+						try {
+							let targetDefaultIcon = defaultIcon;
+							if (currentTheme === AppSettingsTheme.Dark && defaultIconDark) {
+								targetDefaultIcon = defaultIconDark;
+							}
+
+							const { native_path } = await getDefaultIconPath(
+								targetDefaultIcon,
+							);
+
+							return await Image.fromPath(native_path);
+						} catch {
+							return undefined;
 						}
-
-						const { native_path } = await getDefaultIconPath(targetDefaultIcon);
-
-						const iconImage = await Image.fromPath(native_path);
-
-						return iconImage;
 					})()) ??
 					(await defaultWindowIcon()) ??
 					""),

@@ -39,6 +39,10 @@ export type ZmengSettings = {
 	sidebarOpacity: number;
 	/** 复制到新内容后自动收起侧栏 */
 	autoHideOnCopy: boolean;
+	/** 粘贴到其他应用后自动收拢侧栏 */
+	autoCollapseOnPaste: boolean;
+	/** 点击其他位置（侧栏失焦）自动收拢 */
+	autoHideOnBlur: boolean;
 };
 
 export const defaultZmengSettings: ZmengSettings = {
@@ -50,6 +54,8 @@ export const defaultZmengSettings: ZmengSettings = {
 	sidebarWidth: 460,
 	sidebarOpacity: 1,
 	autoHideOnCopy: false,
+	autoCollapseOnPaste: true,
+	autoHideOnBlur: true,
 };
 
 /** ZMENG 剪贴板侧栏配置存储 */

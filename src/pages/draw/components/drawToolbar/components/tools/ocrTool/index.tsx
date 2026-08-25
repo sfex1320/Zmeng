@@ -8,7 +8,6 @@ import {
 	VisionModelHtmlIcon,
 } from "@/components/icons";
 import {
-	PLUGIN_ID_AI_CHAT,
 	PLUGIN_ID_TRANSLATE,
 } from "@/constants/pluginService";
 import { usePluginServiceContext } from "@/contexts/pluginServiceContext";
@@ -110,7 +109,7 @@ const OcrTool: React.FC<{
 							/>,
 						]
 					: []),
-				...(isReadyStatus?.(PLUGIN_ID_AI_CHAT)
+				...(/* 视觉模型已改为用户自配后端，不再依赖插件就绪 */ true
 					? [
 							<Button
 								loading={visionModelHtmlLoading}

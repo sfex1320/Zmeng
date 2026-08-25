@@ -17,12 +17,13 @@ import {
 } from "@ant-design/icons";
 import { startDrag } from "@crabnebula/tauri-plugin-drag";
 import { LogicalPosition, LogicalSize } from "@tauri-apps/api/dpi";
+import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import {
 	availableMonitors,
-	type Monitor,
 	currentMonitor,
 	getCurrentWindow,
+	type Monitor,
 	primaryMonitor,
 } from "@tauri-apps/api/window";
 import { openPath } from "@tauri-apps/plugin-opener";
@@ -51,6 +52,7 @@ import {
 	writeImageBase64,
 	writeText,
 } from "tauri-plugin-clipboard-api";
+import { getMousePosition } from "@/commands";
 import {
 	type DragPayload,
 	pasteToActiveWindow,
@@ -59,7 +61,6 @@ import {
 } from "@/commands/clipboardZmeng";
 import { executeScreenshot } from "@/functions/screenshot";
 import { openImageSaveFolder } from "@/functions/tools";
-import { getMousePosition } from "@/commands";
 import { useAppSettingsLoad } from "@/hooks/useAppSettingsLoad";
 import {
 	type AppSettingsData,
@@ -149,6 +150,8 @@ function dayGroup(ts: number): string {
 async function writeItemToClipboard(item: ClipboardHistoryItem) {
 	// 抑制自写触发的监听：避免「仅复制/粘贴」被当成新复制而自动收起或重复入库
 	suppressClipboardCapture();
+	// 跨窗口全局自写标记（Rust 原子时间戳），兜住本窗口抑制窗口之外的监听触发
+	invoke("clipboard_self_write_mark").catch(() => {});
 	if (item.type === "image" && item.image) {
 		const b64 = item.image.includes(",")
 			? item.image.slice(item.image.indexOf(",") + 1)
@@ -175,9 +178,20 @@ export const ClipboardSidebarPage: React.FC = () => {
 	const [aiInitialAction, setAiInitialAction] = useState<string | undefined>();
 	// 统一的 AI 后端（来自设置体系 FunctionChat.chatApiConfigList，与主程序共用）
 	const [chatBackends, setChatBackends] = useState<ChatApiConfig[]>([]);
+	// 用途分配默认模型（「设置 · 大模型」页配置）
+	const [defaultTranslateModel, setDefaultTranslateModel] = useState("");
+	const [defaultAiModel, setDefaultAiModel] = useState("");
+	const [defaultVisionModel, setDefaultVisionModel] = useState("");
 	useAppSettingsLoad(
 		useCallback((s: AppSettingsData) => {
 			setChatBackends(s[AppSettingsGroup.FunctionChat].chatApiConfigList);
+			setDefaultTranslateModel(
+				s[AppSettingsGroup.FunctionChat].defaultTranslateModel ?? "",
+			);
+			setDefaultAiModel(s[AppSettingsGroup.FunctionChat].defaultAiModel ?? "");
+			setDefaultVisionModel(
+				s[AppSettingsGroup.FunctionChat].defaultVisionModel ?? "",
+			);
 		}, []),
 		true,
 	);
@@ -196,6 +210,7 @@ export const ClipboardSidebarPage: React.FC = () => {
 	const dragStartRef = useRef<{
 		x: number;
 		y: number;
+		item: ClipboardHistoryItem;
 		payload: Promise<DragPayload | null>;
 		started: boolean;
 	} | null>(null);
@@ -208,6 +223,9 @@ export const ClipboardSidebarPage: React.FC = () => {
 	// 打断 hideSidebar 时显式 resolve 上一个 await，否则旧 Promise 永久 pending、
 	// 调用方后续的 pasteToActiveWindow 被静默跳过
 	const hideResolveRef = useRef<(() => void) | null>(null);
+	// 进行中的隐藏 Promise：并发 hideSidebar 复用同一次等待，
+	// 避免第二次调用提前 resolve 掉第一次、其 pasteToActiveWindow 在窗口隐藏前执行
+	const hidePromiseRef = useRef<Promise<void> | null>(null);
 
 	settingsRef.current = settings;
 	openRef.current = open;
@@ -229,9 +247,7 @@ export const ClipboardSidebarPage: React.FC = () => {
 			const monY = mon.position.y / scale;
 			const height = Math.round(monH - TASKBAR_RESERVE);
 			const x =
-				side === "right"
-					? Math.round(monX + monW - width)
-					: Math.round(monX);
+				side === "right" ? Math.round(monX + monW - width) : Math.round(monX);
 			// 并行设置尺寸与位置，减少串行 IPC 往返
 			await Promise.all([
 				win.setSize(new LogicalSize(width, height)),
@@ -241,12 +257,13 @@ export const ClipboardSidebarPage: React.FC = () => {
 		[],
 	);
 
-	const showSidebar = useCallback(async () => {
+	const showSidebar = useCallback(async (options?: { silent?: boolean }) => {
 		// 取消挂起的隐藏定时器，避免与上次收起竞态
 		// 取消挂起的隐藏：resolve 上一个 hide 的 await（避免其 pasteToActiveWindow 被跳过），再清定时器
 		if (hideResolveRef.current) {
 			const resolve = hideResolveRef.current;
 			hideResolveRef.current = null;
+			hidePromiseRef.current = null;
 			resolve();
 		}
 		if (hideTimerRef.current) {
@@ -264,7 +281,10 @@ export const ClipboardSidebarPage: React.FC = () => {
 		setOpen(true); // 立即触发 CSS 滑入
 		// 非关键路径的窗口操作 fire-and-forget，不阻塞首帧
 		win.setAlwaysOnTop(true).catch(() => {});
-		win.setFocus().catch(() => {});
+		// silent：仅供「粘贴后侧栏回弹」等场景，不抢走目标应用的焦点
+		if (!options?.silent) {
+			win.setFocus().catch(() => {});
+		}
 		// 兜底：异步重读设置，若有变化再纠正（不阻塞显示）
 		settingsStoreRef.current
 			?.loadSettings()
@@ -279,29 +299,26 @@ export const ClipboardSidebarPage: React.FC = () => {
 
 	const hideSidebar = useCallback(async () => {
 		setOpen(false);
-		// 打断上一个挂起的 hide：显式 resolve，让旧调用方的 await hideSidebar() 返回，
-		// 否则其后续 pasteToActiveWindow 会被静默跳过。
-		if (hideResolveRef.current) {
-			const resolve = hideResolveRef.current;
-			hideResolveRef.current = null;
-			resolve();
-		}
-		if (hideTimerRef.current) {
-			clearTimeout(hideTimerRef.current);
-			hideTimerRef.current = undefined;
+		// 并发隐藏复用同一次等待：否则第二次调用会提前 resolve 第一次的 Promise，
+		// 让其 pasteToActiveWindow 在窗口实际隐藏前就执行
+		if (hidePromiseRef.current) {
+			return hidePromiseRef.current;
 		}
 		// 等待 ≥ CSS 过渡(0.24s) 完成再隐藏窗口；用可取消定时器，呼出时可打断
-		await new Promise<void>((resolve) => {
+		const hidePromise = new Promise<void>((resolve) => {
 			hideResolveRef.current = resolve;
 			hideTimerRef.current = setTimeout(() => {
 				hideTimerRef.current = undefined;
 				hideResolveRef.current = null;
+				hidePromiseRef.current = null;
 				getCurrentWindow()
 					.hide()
 					.catch(() => {});
 				resolve();
 			}, 260);
 		});
+		hidePromiseRef.current = hidePromise;
+		return hidePromise;
 	}, []);
 
 	const toggleSidebar = useCallback(async () => {
@@ -315,8 +332,20 @@ export const ClipboardSidebarPage: React.FC = () => {
 	// ---- 初始化：store + 历史 + 监听 + 事件 ----
 	useEffect(() => {
 		let disposed = false;
-		let stopMonitor: (() => void) | undefined;
-		const unlisteners: (() => void)[] = [];
+		// 统一登记清理函数：注册完成前组件就卸载（disposed 已置位）时当场回收，
+		// 修复「异步注册过程中卸载 → 剪贴板监听/事件监听器泄漏」
+		const cleanups: (() => void)[] = [];
+		const register = (cleanup: () => void) => {
+			if (disposed) {
+				try {
+					cleanup();
+				} catch {
+					// ignore
+				}
+			} else {
+				cleanups.push(cleanup);
+			}
+		};
 
 		(async () => {
 			const historyStore = new ClipboardHistoryStore();
@@ -333,194 +362,245 @@ export const ClipboardSidebarPage: React.FC = () => {
 
 			// 启动剪贴板监听
 			const { startClipboardMonitor } = await import("./monitor");
-			stopMonitor = await startClipboardMonitor(async (item) => {
-				const store = historyStoreRef.current;
-				if (!store) return;
+			if (disposed) return;
+			register(
+				await startClipboardMonitor(async (item) => {
+					const store = historyStoreRef.current;
+					if (!store) return;
 
-				// 去重：在整个历史中查找内容相同的记录（不只比最新一条）。
-				// 同一次复制有时会触发两次事件（或重复复制同一内容），
-				// 命中则把旧记录「置顶并更新时间」，而不是新增一条 —— 修复「记录两份」。
-				const keyOf = (i: ClipboardHistoryItem): string => i.dedupKey ?? buildDedupKey(i);
-				const key = keyOf(item);
-				setItems((prev) => {
+					// 去重：在整个历史中查找内容相同的记录（不只比最新一条）。
+					// 同一次复制有时会触发两次事件（或重复复制同一内容），
+					// 命中则把旧记录「置顶并更新时间」，而不是新增一条 —— 修复「记录两份」。
+					const keyOf = (i: ClipboardHistoryItem): string =>
+						i.dedupKey ?? buildDedupKey(i);
+					const key = keyOf(item);
+					// 基于引用同步计算下一状态；落盘等副作用放在 setState 更新器之外，
+					// 避免 React 严格模式/并发渲染重放更新器时重复写盘
+					const prev = itemsRef.current;
 					const existing = prev.find((i) => keyOf(i) === key);
 					if (existing) {
 						const updated = { ...existing, createdAt: item.createdAt };
-						store.set(updated.id, updated);
 						const deduped = [
 							updated,
 							...prev.filter((i) => i.id !== updated.id),
 						];
 						itemsRef.current = deduped;
-						return deduped;
-					}
-
-					store.set(item.id, item);
-					const next = [item, ...prev];
-					// 淘汰：超过上限删除最旧的非收藏项
-					const max = settingsRef.current?.maxItems ?? 200;
-					if (next.length > max) {
-						for (let i = next.length - 1; i >= 0 && next.length > max; i--) {
-							if (!next[i].favorite) {
-								const removed = next.splice(i, 1)[0];
-								store.delete(removed.id);
+						setItems(deduped);
+						store.set(updated.id, updated).catch(() => {});
+					} else {
+						const next = [item, ...prev];
+						// 淘汰：超过上限删除最旧的非收藏项
+						const max = settingsRef.current?.maxItems ?? 200;
+						const removedIds: string[] = [];
+						if (next.length > max) {
+							for (let i = next.length - 1; i >= 0 && next.length > max; i--) {
+								if (!next[i].favorite) {
+									const removed = next.splice(i, 1)[0];
+									removedIds.push(removed.id);
+								}
 							}
 						}
+						itemsRef.current = next;
+						setItems(next);
+						store.set(item.id, item).catch(() => {});
+						for (const id of removedIds) {
+							store.delete(id).catch(() => {});
+						}
 					}
-					itemsRef.current = next;
-					return next;
-				});
 
-				// 复制到新内容后自动收起侧栏（可在设置开启）
-				store.save().catch(() => {});
+					// 持久化本次变更；复制到新内容后自动收起侧栏（可在设置开启）
+					store.save().catch(() => {});
 
-				if (settingsRef.current?.autoHideOnCopy && openRef.current) {
-					hideSidebar();
-				}
-			});
-
-			// 监听唤起/切换事件（来自全局快捷键 / 托盘）
-			unlisteners.push(
-				await listen("zmeng://toggle-sidebar", () => {
-					toggleSidebar();
+					if (settingsRef.current?.autoHideOnCopy && openRef.current) {
+						hideSidebar().catch(() => {});
+					}
 				}),
 			);
-			unlisteners.push(
+
+			// 监听唤起/切换事件（来自全局快捷键 / 托盘）
+			register(
+				await listen("zmeng://toggle-sidebar", () => {
+					toggleSidebar().catch(() => {});
+				}),
+			);
+			register(
 				await listen("zmeng://show-sidebar", () => {
-					showSidebar();
+					showSidebar().catch(() => {});
 				}),
 			);
 			// 设置变更实时生效：主窗口改设置后 emit 此事件，侧栏重载并在打开时重排窗口
-			unlisteners.push(
+			register(
 				await listen("zmeng://reload-settings", async () => {
 					const fresh = await settingsStoreRef.current?.loadSettings();
 					if (!fresh) return;
 					settingsRef.current = fresh;
 					setSettings(fresh);
 					if (openRef.current) {
-							try {
-								await dockWindow(fresh.dockSide, fresh.sidebarWidth);
-								await getCurrentWindow().setAlwaysOnTop(true);
-							} catch {
-								// 窗口操作失败不影响设置生效
-							}
+						try {
+							await dockWindow(fresh.dockSide, fresh.sidebarWidth);
+							await getCurrentWindow().setAlwaysOnTop(true);
+						} catch {
+							// 窗口操作失败不影响设置生效
 						}
+					}
 				}),
 			);
 		})();
 
 		const onKey = (e: KeyboardEvent) => {
 			if (e.key === "Escape") {
-				hideSidebar();
+				hideSidebar().catch(() => {});
 			}
 		};
 		window.addEventListener("keydown", onKey);
 
 		return () => {
 			disposed = true;
-			stopMonitor?.();
-			for (const u of unlisteners) u();
+			for (const cleanup of cleanups) {
+				try {
+					cleanup();
+				} catch {
+					// ignore
+				}
+			}
 			window.removeEventListener("keydown", onKey);
 		};
-	}, [toggleSidebar, showSidebar, hideSidebar]);
+	}, [toggleSidebar, showSidebar, hideSidebar, dockWindow]);
+
+	// 点击其他位置（窗口失焦）自动收拢：鼠标回到其他应用后侧栏自动滑走。
+	// 侧栏呼出时会短暂获得焦点，用户点进其他应用对话框即触发失焦收起
+	useEffect(() => {
+		const un = getCurrentWindow().onFocusChanged(({ payload: focused }) => {
+			if (!focused && openRef.current && settingsRef.current?.autoHideOnBlur) {
+				hideSidebar().catch(() => {});
+			}
+		});
+		return () => {
+			un.then((f) => f());
+		};
+	}, [hideSidebar]);
 
 	// ---- 操作 ----
+	// 粘贴路径统一收口：hideSidebar → pasteToActiveWindow →
+	// 若「粘贴后自动收拢」关闭，则侧栏静默回弹到边缘待命（不抢焦点）
+	const pasteWithSidebarControl = useCallback(async () => {
+		await hideSidebar();
+		try {
+			await pasteToActiveWindow();
+		} catch {
+			message.warning("已复制（自动粘贴失败，可手动 Ctrl+V）");
+		}
+		if (settingsRef.current && !settingsRef.current.autoCollapseOnPaste) {
+			await showSidebar({ silent: true });
+		}
+	}, [hideSidebar, showSidebar]);
+
 	const activateItem = useCallback(
 		async (item: ClipboardHistoryItem) => {
-			await writeItemToClipboard(item);
-			if (settingsRef.current?.pasteOnSelect) {
-				await hideSidebar();
-				try {
-					await pasteToActiveWindow();
-				} catch {
-					message.warning("已复制（自动粘贴失败，可手动 Ctrl+V）");
+			try {
+				await writeItemToClipboard(item);
+				if (settingsRef.current?.pasteOnSelect) {
+					await pasteWithSidebarControl();
+				} else {
+					message.success("已复制到剪贴板");
 				}
-			} else {
-				message.success("已复制到剪贴板");
+			} catch {
+				message.error("复制失败，请重试");
 			}
 		},
-		[hideSidebar],
+		[pasteWithSidebarControl],
 	);
 
 	const pasteText = useCallback(
 		async (text: string) => {
-			suppressClipboardCapture();
-			await writeText(text);
-			await hideSidebar();
 			try {
-				await pasteToActiveWindow();
+				suppressClipboardCapture();
+				invoke("clipboard_self_write_mark").catch(() => {});
+				await writeText(text);
+				await pasteWithSidebarControl();
 			} catch {
-				message.warning("已复制（自动粘贴失败，可手动 Ctrl+V）");
+				message.error("复制失败，请重试");
 			}
 		},
-		[hideSidebar],
+		[pasteWithSidebarControl],
 	);
 
 	const toggleFavorite = useCallback(async (item: ClipboardHistoryItem) => {
-		const next = { ...item, favorite: !item.favorite };
-		await historyStoreRef.current?.set(item.id, next);
-		await historyStoreRef.current?.save();
-		setItems((prev) => prev.map((i) => (i.id === item.id ? next : i)));
+		try {
+			const next = { ...item, favorite: !item.favorite };
+			await historyStoreRef.current?.set(item.id, next);
+			await historyStoreRef.current?.save();
+			setItems((prev) => prev.map((i) => (i.id === item.id ? next : i)));
+		} catch {
+			message.error("收藏状态保存失败，请重试");
+		}
 	}, []);
 
 	const deleteItem = useCallback(async (item: ClipboardHistoryItem) => {
-		await historyStoreRef.current?.delete(item.id);
-		await historyStoreRef.current?.save();
-		setItems((prev) => prev.filter((i) => i.id !== item.id));
+		try {
+			await historyStoreRef.current?.delete(item.id);
+			await historyStoreRef.current?.save();
+			setItems((prev) => prev.filter((i) => i.id !== item.id));
+		} catch {
+			message.error("删除失败，请重试");
+		}
 	}, []);
 
 	// 显式「粘贴到当前应用」：写回剪贴板 → 隐藏侧栏 → 模拟 Ctrl+V 进入之前激活的窗口
 	const pasteItem = useCallback(
 		async (item: ClipboardHistoryItem) => {
-			await writeItemToClipboard(item);
-			await hideSidebar();
 			try {
-				await pasteToActiveWindow();
+				await writeItemToClipboard(item);
+				await pasteWithSidebarControl();
 			} catch {
-				message.warning("已复制（自动粘贴失败，可手动 Ctrl+V）");
+				message.error("复制失败，请重试");
 			}
 		},
-		[hideSidebar],
+		[pasteWithSidebarControl],
 	);
 
 	// 仅复制到剪贴板（不粘贴）
 	const copyItem = useCallback(async (item: ClipboardHistoryItem) => {
-		await writeItemToClipboard(item);
-		message.success("已复制到剪贴板");
+		try {
+			await writeItemToClipboard(item);
+			message.success("已复制到剪贴板");
+		} catch {
+			message.error("复制失败，请重试");
+		}
 	}, []);
 
 	// 粘贴为纯文本（去掉格式）
 	const pasteAsPlain = useCallback(
 		async (item: ClipboardHistoryItem) => {
-			suppressClipboardCapture();
-			await writeText(item.content ?? "");
-			await hideSidebar();
 			try {
-				await pasteToActiveWindow();
+				suppressClipboardCapture();
+				invoke("clipboard_self_write_mark").catch(() => {});
+				await writeText(item.content ?? "");
+				await pasteWithSidebarControl();
 			} catch {
-				message.warning("已复制（自动粘贴失败，可手动 Ctrl+V）");
+				message.error("复制失败，请重试");
 			}
 		},
-		[hideSidebar],
+		[pasteWithSidebarControl],
 	);
 
 	// 粘贴为格式文本（保留 HTML 富文本）
 	const pasteAsFormatted = useCallback(
 		async (item: ClipboardHistoryItem) => {
-			suppressClipboardCapture();
-			if (item.html) {
-				await writeHtmlAndText(item.html, item.content ?? "");
-			} else {
-				await writeText(item.content ?? "");
-			}
-			await hideSidebar();
 			try {
-				await pasteToActiveWindow();
+				suppressClipboardCapture();
+				invoke("clipboard_self_write_mark").catch(() => {});
+				if (item.html) {
+					await writeHtmlAndText(item.html, item.content ?? "");
+				} else {
+					await writeText(item.content ?? "");
+				}
+				await pasteWithSidebarControl();
 			} catch {
-				message.warning("已复制（自动粘贴失败，可手动 Ctrl+V）");
+				message.error("复制失败，请重试");
 			}
 		},
-		[hideSidebar],
+		[pasteWithSidebarControl],
 	);
 
 	// 图片 / 文件用「系统级原生拖放」（拖入设计/聊天软件得到真实文件，不再泄漏 base64）；
@@ -573,7 +653,14 @@ export const ClipboardSidebarPage: React.FC = () => {
 						});
 					}
 				} catch {
-					// 拖放失败忽略；用户仍可单击卡片写回剪贴板再 Ctrl+V
+					// 拖放失败（部分应用不接受 OLE 文件拖入）：回退为复制到剪贴板，
+					// 用户在目标应用 Ctrl+V 即可，避免拖拽彻底无响应
+					try {
+						await writeItemToClipboard(st.item);
+						message.info("该应用不支持拖入，内容已复制，可 Ctrl+V 粘贴");
+					} catch {
+						// 回退复制也失败则保持静默
+					}
 				} finally {
 					dragStartRef.current = null;
 				}
@@ -660,26 +747,23 @@ export const ClipboardSidebarPage: React.FC = () => {
 		[],
 	);
 
-	const openAi = useCallback(
-		(item: ClipboardHistoryItem, action?: string) => {
-			// 图片项 → 进入「图片视觉」模式（交给支持视觉的模型分析内容/文字/风格/提示词等）
-			if (item.type === "image" && item.image) {
-				setAiImage(item.image);
-				setAiInput("");
-				setAiInitialAction(undefined);
-				return;
-			}
-			const text = item.content ?? item.html ?? "";
-			if (!text.trim()) {
-				message.info("该记录没有可处理的内容");
-				return;
-			}
-			setAiImage(null);
-			setAiInput(text);
-			setAiInitialAction(action);
-		},
-		[],
-	);
+	const openAi = useCallback((item: ClipboardHistoryItem, action?: string) => {
+		// 图片项 → 进入「图片视觉」模式（交给支持视觉的模型分析内容/文字/风格/提示词等）
+		if (item.type === "image" && item.image) {
+			setAiImage(item.image);
+			setAiInput("");
+			setAiInitialAction(undefined);
+			return;
+		}
+		const text = item.content ?? item.html ?? "";
+		if (!text.trim()) {
+			message.info("该记录没有可处理的内容");
+			return;
+		}
+		setAiImage(null);
+		setAiInput(text);
+		setAiInitialAction(action);
+	}, []);
 
 	const onCardMenuClick = useCallback(
 		(item: ClipboardHistoryItem, key: string) => {
@@ -801,7 +885,11 @@ export const ClipboardSidebarPage: React.FC = () => {
 					</div>
 					<div className="header-actions">
 						<Tooltip title="关闭">
-							<Button type="text" icon={<CloseOutlined />} onClick={hideSidebar} />
+							<Button
+								type="text"
+								icon={<CloseOutlined />}
+								onClick={hideSidebar}
+							/>
 						</Tooltip>
 					</div>
 				</div>
@@ -870,6 +958,7 @@ export const ClipboardSidebarPage: React.FC = () => {
 														? {
 																x: e.clientX,
 																y: e.clientY,
+																item,
 																payload: getDragPayload(item),
 																started: false,
 															}
@@ -895,10 +984,15 @@ export const ClipboardSidebarPage: React.FC = () => {
 													activateItem(item);
 												}}
 												title={
-													item.favorite ? "单击粘贴 · 右键更多 · ★已收藏" : "单击粘贴 · 右键更多"
+													item.favorite
+														? "单击粘贴 · 右键更多 · ★已收藏"
+														: "单击粘贴 · 右键更多"
 												}
 											>
-												<div className="card-left" style={{ color: meta.color }}>
+												<div
+													className="card-left"
+													style={{ color: meta.color }}
+												>
 													<span className="card-icon">{meta.icon}</span>
 													<span className="card-type">{meta.label}</span>
 												</div>
@@ -948,7 +1042,9 @@ export const ClipboardSidebarPage: React.FC = () => {
 														<div className="card-text">{item.content}</div>
 													)}
 													{item.sourceTitle && (
-														<div className="card-source">{item.sourceTitle}</div>
+														<div className="card-source">
+															{item.sourceTitle}
+														</div>
 													)}
 												</div>
 											</div>
@@ -1009,6 +1105,9 @@ export const ClipboardSidebarPage: React.FC = () => {
 					input={aiInput}
 					image={aiImage}
 					backends={chatBackends}
+					defaultTranslateModel={defaultTranslateModel}
+					defaultAiModel={defaultAiModel}
+					defaultVisionModel={defaultVisionModel}
 					translateTargetLang={settings?.translateTargetLang ?? "中文"}
 					initialAction={aiInitialAction}
 					onPaste={pasteText}

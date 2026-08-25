@@ -96,8 +96,8 @@ const NAV_GROUPS: SidebarNavGroup[] = [
 			{
 				key: "/settings/ai",
 				path: "/settings/ai",
-				label: "AI 助手",
-				desc: "模型后端与参数",
+				label: "大模型",
+				desc: "后端 · 用途分配 · 参数",
 				icon: <RobotOutlined />,
 			},
 			{

@@ -47,11 +47,13 @@ export const setWindowRect = async (
 		appWindow.setPosition(windowPosition);
 	} else {
 		// windows 也设置两次，防止窗口位置引起了窗口缩放变化
+		// 两次设置必须顺序执行并等待完成：此前第二次未 await，
+		// 与截图取屏并发时窗口尺寸仍处于中间状态，会造成画面抖动/错位
 		await Promise.all([
 			appWindow.setPosition(windowPosition),
 			appWindow.setSize(windowSize),
 		]);
-		Promise.all([
+		await Promise.all([
 			appWindow.setPosition(windowPosition),
 			appWindow.setSize(windowSize),
 		]);

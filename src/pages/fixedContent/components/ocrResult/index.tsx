@@ -30,14 +30,15 @@ import {
 	type CaptureBoundingBoxInfo,
 	ElementDraggingPublisher,
 } from "@/pages/draw/extra";
-import { CUSTOM_MODEL_PREFIX, MarkdownContent } from "@/pages/tools/chat/page";
-import { appFetch, getUrl } from "@/services/tools";
-import { getChatModelsWithCache } from "@/services/tools/chat";
+import { MarkdownContent } from "@/components/markdownContent";
+import { CUSTOM_MODEL_PREFIX } from "@/constants/components/chat";
+import { appFetch } from "@/services/tools";
 import { AppSettingsGroup, type ChatApiConfig } from "@/types/appSettings";
 import type { OcrDetectResult } from "@/types/commands/ocr";
 import type { ElementRect } from "@/types/commands/screenshot";
 import { writeHtmlToClipboard, writeTextToClipboard } from "@/utils/clipboard";
 import { appError } from "@/utils/log";
+import { createThinkFilter } from "@/utils/thinkFilter";
 import { getPlatformValue } from "@/utils/platform";
 import { randomString } from "@/utils/random";
 import { getWebViewSharedBuffer } from "@/utils/webview";
@@ -112,12 +113,10 @@ export type VisionModel = {
 export const useVisionModelList = () => {
 	const [getAppSettings] = useStateSubscriber(AppSettingsPublisher, undefined);
 
-	const customVisionModelListRef = useRef<VisionModel[]>(undefined);
 	const getVisionModelList = useCallback(async () => {
 		const settings = getAppSettings();
-		const visionModelList = settings[
-			AppSettingsGroup.FunctionChat
-		].chatApiConfigList
+		// 官方（snowshot.top）模型接口已停用，仅保留用户自定义的视觉后端
+		return settings[AppSettingsGroup.FunctionChat].chatApiConfigList
 			.filter((config) => config.support_vision)
 			.map((config) => {
 				return {
@@ -128,27 +127,6 @@ export const useVisionModelList = () => {
 					isOfficial: false,
 				};
 			});
-
-		if (!customVisionModelListRef.current) {
-			const res = await getChatModelsWithCache();
-			customVisionModelListRef.current = (res ?? [])
-				.filter((item) => item.support_vision)
-				.map((item) => {
-					return {
-						config: {
-							api_uri: getUrl("api/v1/"),
-							api_key: "",
-							api_model: item.model,
-							model_name: item.name,
-							support_thinking: item.thinking,
-							support_vision: item.support_vision,
-						},
-						isOfficial: true,
-					};
-				});
-		}
-
-		return [...visionModelList, ...customVisionModelListRef.current];
 	}, [getAppSettings]);
 
 	return useMemo(() => {
@@ -1095,42 +1073,53 @@ export const OcrResult: React.FC<{
 					stream: true,
 				});
 
+				// 思考型模型（如 MiniMax-M2）的 <think> 推理内容混在正文流里，过滤只留结果
+				const thinkFilter = createThinkFilter();
+				const appendVisible = (visible: string) => {
+					formatResult = {
+						text_blocks: [
+							{
+								text: formatResult.text_blocks[0].text + visible,
+								box_points: [],
+								text_score: 0,
+							},
+						],
+						scale_factor: 1,
+					};
+					if (format === "html") {
+						setVisionModelHtmlResult({
+							result: formatResult,
+							ignoreScale: false,
+						});
+						updateOcrTextElements(
+							formatResult,
+							false,
+							OcrResultType.VisionModelHtml,
+						);
+					} else {
+						setVisionModelMarkdownResult({
+							result: formatResult,
+							ignoreScale: false,
+						});
+						updateOcrTextElements(
+							formatResult,
+							false,
+							OcrResultType.VisionModelMarkdown,
+						);
+					}
+				};
+
 				for await (const event of streamResponse) {
 					if (event.choices.length > 0 && event.choices[0].delta.content) {
-						formatResult = {
-							text_blocks: [
-								{
-									text:
-										formatResult.text_blocks[0].text +
-										event.choices[0].delta.content,
-									box_points: [],
-									text_score: 0,
-								},
-							],
-							scale_factor: 1,
-						};
-						if (format === "html") {
-							setVisionModelHtmlResult({
-								result: formatResult,
-								ignoreScale: false,
-							});
-							updateOcrTextElements(
-								formatResult,
-								false,
-								OcrResultType.VisionModelHtml,
-							);
-						} else {
-							setVisionModelMarkdownResult({
-								result: formatResult,
-								ignoreScale: false,
-							});
-							updateOcrTextElements(
-								formatResult,
-								false,
-								OcrResultType.VisionModelMarkdown,
-							);
+						const visible = thinkFilter.push(event.choices[0].delta.content);
+						if (visible) {
+							appendVisible(visible);
 						}
 					}
+				}
+				const tail = thinkFilter.flush();
+				if (tail) {
+					appendVisible(tail);
 				}
 			} catch (error) {
 				appError(

@@ -583,8 +583,21 @@ pub async fn paste_to_active_window(
             if !snow_shot_app_os::utils::set_foreground_window(handle as isize) {
                 return Err("paste_foreground_failed".to_string());
             }
-            // 等待焦点切换完成后再粘贴
-            tokio::time::sleep(tokio::time::Duration::from_millis(80)).await;
+            // 轮询确认目标窗口已真正处于前台（最长 500ms）再粘贴。
+            // 此前固定等待 80ms，慢速窗口激活时焦点尚未切换完成，Ctrl+V 会落到别的窗口
+            let mut foreground_ok = false;
+            for _ in 0..25 {
+                if snow_shot_app_os::utils::get_foreground_window_handle() as i64 == handle {
+                    foreground_ok = true;
+                    break;
+                }
+                tokio::time::sleep(tokio::time::Duration::from_millis(20)).await;
+            }
+            if !foreground_ok {
+                return Err("paste_foreground_failed".to_string());
+            }
+            // 焦点就绪后再留一小段缓冲，等目标应用输入队列就绪
+            tokio::time::sleep(tokio::time::Duration::from_millis(60)).await;
         }
     }
 
@@ -592,6 +605,20 @@ pub async fn paste_to_active_window(
     enigo.paste()?;
 
     Ok(())
+}
+
+// ===================== ZMENG 剪贴板自写标记（跨窗口去重） =====================
+
+/// 前端在写剪贴板前调用：登记自写时间戳，剪贴板监听侧据此跳过自己写入的内容。
+#[command]
+pub fn clipboard_self_write_mark() {
+    snow_shot_app_shared::mark_clipboard_self_write();
+}
+
+/// 剪贴板监听侧调用：最近一次自写是否在有效窗口内（1500ms）。
+#[command]
+pub fn clipboard_self_write_recent() -> bool {
+    snow_shot_app_shared::is_clipboard_self_write_recent()
 }
 
 // ===================== ZMENG AI：本地/直连 HTTP 请求 =====================

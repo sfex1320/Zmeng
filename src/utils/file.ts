@@ -2,6 +2,7 @@ import { join as joinPath, pictureDir, videoDir } from "@tauri-apps/api/path";
 import * as dialog from "@tauri-apps/plugin-dialog";
 import dayjs from "dayjs";
 import { createDir } from "@/commands/file";
+import { getAppConfigBaseDirWithCache } from "@/utils/environment";
 import { type AppSettingsData, AppSettingsGroup } from "@/types/appSettings";
 import { ImageFormat, type ImagePath } from "@/types/utils/file";
 
@@ -72,7 +73,19 @@ export const getImageSaveDirectory = async (appSettings: AppSettingsData) => {
 		appSettings[AppSettingsGroup.FunctionScreenshot].saveFileDirectory;
 
 	if (!savePath) {
-		savePath = await joinPath(await pictureDir(), "ZMENG");
+		// 未自定义时默认存到「数据文件夹/截图」（如 D:\剪贴板数据\截图），
+		// 与剪贴板历史同处一地，避免用户在数据目录找不到截图
+		try {
+			const baseDir = await getAppConfigBaseDirWithCache();
+			if (baseDir) {
+				savePath = await joinPath(baseDir, "截图");
+			}
+		} catch {
+			// 数据目录不可用时回退到图片库
+		}
+		if (!savePath) {
+			savePath = await joinPath(await pictureDir(), "ZMENG");
+		}
 	}
 
 	return savePath;
@@ -208,7 +221,18 @@ export const getVideoRecordSaveDirectory = async (
 		appSettings[AppSettingsGroup.FunctionVideoRecord].saveDirectory;
 
 	if (!savePath) {
-		savePath = await joinPath(await videoDir(), "ZMENG");
+		// 与截图一致：默认存到「数据文件夹/录屏」，方便用户统一查找
+		try {
+			const baseDir = await getAppConfigBaseDirWithCache();
+			if (baseDir) {
+				savePath = await joinPath(baseDir, "录屏");
+			}
+		} catch {
+			// 数据目录不可用时回退到视频库
+		}
+		if (!savePath) {
+			savePath = await joinPath(await videoDir(), "ZMENG");
+		}
 	}
 
 	return savePath;

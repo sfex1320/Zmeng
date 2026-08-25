@@ -1,7 +1,17 @@
+import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import * as clipboard from "@tauri-apps/plugin-clipboard-manager";
 import extraClipboard from "tauri-plugin-clipboard-api";
 import { appWarn } from "./log";
+
+/**
+ * 写剪贴板前登记全局自写标记（Rust 侧原子时间戳）。
+ * 剪贴板监听据此跳过本应用自己写入的内容——JS 变量只在本窗口生效，
+ * 截图窗口/主窗口的写入只有靠这个跨窗口标记才能被侧栏识别。
+ */
+const markSelfWrite = () => {
+	invoke("clipboard_self_write_mark").catch(() => {});
+};
 
 export const copyText = (text: string) => {
 	const selected = window.getSelection();
@@ -31,6 +41,7 @@ const supportClipboardApi = () => {
 };
 
 export const writeTextToClipboard = async (text: string) => {
+	markSelfWrite();
 	let isSuccess = false;
 	try {
 		await extraClipboard.writeText(text);
@@ -57,6 +68,7 @@ export const writeImageToClipboard = async (
 	image: Blob | ArrayBuffer,
 	format = "image/png",
 ) => {
+	markSelfWrite();
 	let isSuccess = false;
 	try {
 		await clipboard.writeImage(
@@ -85,6 +97,7 @@ export const writeImageToClipboard = async (
 };
 
 export const writeHtmlToClipboard = async (html: string) => {
+	markSelfWrite();
 	let isSuccess = false;
 	try {
 		await clipboard.writeHtml(html);
@@ -106,6 +119,7 @@ export const writeHtmlToClipboard = async (html: string) => {
 };
 
 export const writeFilePathToClipboard = async (filePath: string) => {
+	markSelfWrite();
 	let isSuccess = false;
 	try {
 		await extraClipboard.writeFiles([filePath]);

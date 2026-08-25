@@ -1,7 +1,9 @@
 import { trim } from "es-toolkit";
 import OpenAI from "openai";
+import type { ChatCompletionCreateParamsStreaming } from "openai/resources/chat/completions";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { useIntl } from "react-intl";
+import { CUSTOM_MODEL_PREFIX } from "@/constants/components/chat";
 import { defaultTranslationPrompt } from "@/constants/components/translation";
 import { AntdContext } from "@/contexts/antdContext";
 import { AppSettingsActionContext } from "@/contexts/appSettingsActionContext";
@@ -11,15 +13,9 @@ import {
 	convertLanguageCodeToDeepLSourceLanguageCode,
 	convertLanguageCodeToDeepLTargetLanguageCode,
 } from "@/pages/settings/functionSettings/extra";
-import { CUSTOM_MODEL_PREFIX } from "@/pages/tools/chat/page";
 import { getTranslationPrompt } from "@/pages/tools/translation/extra";
-import { appFetch, getUrl, type ServiceResponse } from "@/services/tools";
-import { type ChatModel, getChatModelsWithCache } from "@/services/tools/chat";
-import {
-	getTranslationTypesWithCache,
-	translate,
-	translateTextDeepL,
-} from "@/services/tools/translation";
+import { appFetch, qwenThinkingDisableParams } from "@/services/tools";
+import { translateTextDeepL } from "@/services/tools/translation";
 import {
 	type AppSettingsData,
 	AppSettingsGroup,
@@ -29,12 +25,12 @@ import {
 } from "@/types/appSettings";
 import {
 	type DeepLTranslateResult,
-	type TranslateData,
 	TranslationDomain,
 	TranslationType,
 	type TranslationTypeOption,
 } from "@/types/servies/translation";
 import { appError } from "@/utils/log";
+import { createThinkFilter } from "@/utils/thinkFilter";
 
 export type TranslationServiceConfig = (
 	| TranslationTypeOption
@@ -85,18 +81,12 @@ export const useTranslationRequest = (options?: {
 	const [translationApiConfigList, setTranslationApiConfigList] = useState<
 		TranslationApiConfig[] | undefined
 	>(undefined);
-	// ZMENG 自带的
-	const [
-		officialTranslationTypes,
-		setOfficialTranslationTypes,
-		officialTranslationTypesRef,
-	] = useStateRef<TranslationTypeOption[] | undefined>(undefined);
-	const [officialChatModels, setOfficialChatModels, officialChatModelsRef] =
-		useStateRef<ChatModel[] | undefined>(undefined);
 	const [chatConfig, setChatConfig] =
 		useState<AppSettingsData[AppSettingsGroup.SystemChat]>();
 	const [translationConfig, setTranslationConfig] =
 		useState<AppSettingsData[AppSettingsGroup.FunctionTranslation]>();
+	// 「大模型」页配置的默认翻译模型（`CUSTOM_MODEL_PREFIX + api_model`）
+	const [defaultTranslateModel, setDefaultTranslateModel] = useState("");
 
 	useAppSettingsLoad(
 		useCallback(
@@ -140,6 +130,9 @@ export const useTranslationRequest = (options?: {
 					settings[AppSettingsGroup.FunctionTranslation]
 						.translationApiConfigList,
 				);
+				setDefaultTranslateModel(
+					settings[AppSettingsGroup.FunctionChat].defaultTranslateModel ?? "",
+				);
 
 				setChatConfig(settings[AppSettingsGroup.SystemChat]);
 				setTranslationConfig(settings[AppSettingsGroup.FunctionTranslation]);
@@ -155,41 +148,6 @@ export const useTranslationRequest = (options?: {
 		true,
 	);
 	const { updateAppSettings } = useContext(AppSettingsActionContext);
-
-	const reloadOnlineConfigsPromiseRef = useRef<
-		Promise<[undefined, undefined]> | undefined
-	>(undefined);
-	const reloadOnlineConfigs = useCallback(async () => {
-		if (officialTranslationTypesRef.current && officialChatModelsRef.current) {
-			return;
-		}
-
-		const promise = Promise.all([
-			getTranslationTypesWithCache().then((res) => {
-				setOfficialTranslationTypes(res ?? []);
-				return undefined;
-			}),
-			getChatModelsWithCache().then((res) => {
-				setOfficialChatModels(res ?? []);
-				return undefined;
-			}),
-		]);
-		reloadOnlineConfigsPromiseRef.current = promise;
-		await promise;
-	}, [
-		setOfficialChatModels,
-		setOfficialTranslationTypes,
-		officialChatModelsRef,
-		officialTranslationTypesRef,
-	]);
-
-	useEffect(() => {
-		if (options?.lazyLoad) {
-			return;
-		}
-
-		reloadOnlineConfigs();
-	}, [reloadOnlineConfigs, options?.lazyLoad]);
 
 	const [
 		supportedTranslationTypes,
@@ -215,6 +173,7 @@ export const useTranslationRequest = (options?: {
 	] = useState(false);
 	useEffect(() => {
 		setSupportedTranslationTypesLoading(true);
+		// 官方（snowshot.top）翻译/模型接口已停用，仅保留用户自定义 LLM 与自定义翻译 API（DeepL）
 		setSupportedTranslationTypes([
 			...(chatApiConfigList?.map((item): TranslationServiceConfig => {
 				return {
@@ -235,38 +194,12 @@ export const useTranslationRequest = (options?: {
 					isOfficial: false,
 				};
 			}) ?? []),
-			...(officialTranslationTypes ?? []).map(
-				(item): TranslationServiceConfig => {
-					return {
-						type: item.type,
-						name: item.name,
-						isOfficial: true,
-					};
-				},
-			),
-			...(officialChatModels ?? []).map((item): TranslationServiceConfig => {
-				return {
-					type: item.model,
-					name: item.name,
-					apiConfig: {
-						api_uri: getUrl("api/v1/"),
-						api_key: "",
-						api_model: item.model,
-						model_name: item.name,
-						support_thinking: false,
-						support_vision: false,
-					},
-					isOfficial: true,
-				};
-			}),
 		]);
 		setSupportedTranslationTypesLoading(false);
 	}, [
 		chatApiConfigList,
 		setSupportedTranslationTypes,
 		translationApiConfigList,
-		officialChatModels,
-		officialTranslationTypes,
 		getTranslationApiConfigTypeName,
 	]);
 
@@ -276,6 +209,33 @@ export const useTranslationRequest = (options?: {
 	const [deltaTranslateLoading, setDeltaTranslateLoading] = useState(false);
 	const [translatedContent, setTranslatedContent, translatedContentRef] =
 		useStateRef<string>("");
+
+	const updateTranslationType = useCallback(
+		(translationType: TranslationType | string) => {
+			if (options?.enableCacheConfig) {
+				updateAppSettings(
+					AppSettingsGroup.FunctionTranslationCache,
+					{ cacheTranslationType: translationType },
+					true,
+					true,
+					false,
+					true,
+					false,
+				);
+			} else {
+				updateAppSettings(
+					AppSettingsGroup.FunctionTranslation,
+					{ translationType },
+					true,
+					true,
+					true,
+					true,
+					false,
+				);
+			}
+		},
+		[updateAppSettings, options?.enableCacheConfig],
+	);
 
 	const customTranslation = useCallback(
 		async (params: {
@@ -287,6 +247,7 @@ export const useTranslationRequest = (options?: {
 			requestId?: number;
 		}): Promise<{
 			success: boolean;
+			errorMessage?: string;
 			result?: {
 				content: string;
 			}[];
@@ -298,6 +259,7 @@ export const useTranslationRequest = (options?: {
 			if (!config || typeof config.type !== "string") {
 				return {
 					success: false,
+					errorMessage: "未找到可用的翻译模型，请在「设置 · 大模型」中配置",
 				};
 			}
 
@@ -329,6 +291,7 @@ export const useTranslationRequest = (options?: {
 					if (!result) {
 						return {
 							success: false,
+							errorMessage: "DeepL 请求失败，请检查网络与 API Key",
 						};
 					}
 
@@ -351,6 +314,7 @@ export const useTranslationRequest = (options?: {
 			if (!("apiConfig" in config)) {
 				return {
 					success: false,
+					errorMessage: "该翻译服务配置不完整",
 				};
 			}
 
@@ -364,6 +328,9 @@ export const useTranslationRequest = (options?: {
 			setStartTranslateLoading(true);
 
 			let responseContent: string = "";
+			let failReason: string | undefined;
+			// 思考型模型（如 MiniMax-M2）把 <think> 推理过程混在 content 流里，逐段过滤只留正文
+			const thinkFilter = createThinkFilter();
 			try {
 				const streamResponse = await client.chat.completions.create({
 					model: config.apiConfig.api_model.replace(CUSTOM_MODEL_PREFIX, ""),
@@ -373,9 +340,9 @@ export const useTranslationRequest = (options?: {
 							content: getTranslationPrompt(
 								translationConfig?.translationSystemPrompt ??
 									defaultTranslationPrompt,
-								sourceLanguage,
-								targetLanguage,
-								translationDomain,
+								params.sourceLanguage,
+								params.targetLanguage,
+								params.translationDomain,
 							),
 						},
 						{
@@ -386,6 +353,10 @@ export const useTranslationRequest = (options?: {
 					max_completion_tokens: chatConfig?.maxTokens ?? 4096,
 					temperature: chatConfig?.temperature ?? 1,
 					stream: true,
+					// DashScope 系端点默认开思考模式，翻译不需要且首字前无输出：关闭可提速约 3 倍
+					...qwenThinkingDisableParams(config.apiConfig.api_uri),
+				} as ChatCompletionCreateParamsStreaming & {
+					enable_thinking?: boolean;
 				});
 
 				setDeltaTranslateLoading(true);
@@ -393,22 +364,45 @@ export const useTranslationRequest = (options?: {
 					setTranslatedContent("");
 					for await (const event of streamResponse) {
 						if (event.choices.length > 0 && event.choices[0].delta.content) {
-							setTranslatedContent(
-								(prevContent) =>
-									`${prevContent}${event.choices[0].delta.content}`,
+							const visible = thinkFilter.push(
+								event.choices[0].delta.content,
 							);
-							responseContent += event.choices[0].delta.content;
-							options?.onDeltaContent?.(event.choices[0].delta.content);
+							if (visible) {
+								setTranslatedContent((prevContent) => `${prevContent}${visible}`);
+								responseContent += visible;
+								options?.onDeltaContent?.(visible);
+							}
 						}
 					}
+					const tail = thinkFilter.flush();
+					if (tail) {
+						setTranslatedContent((prevContent) => `${prevContent}${tail}`);
+						responseContent += tail;
+						options?.onDeltaContent?.(tail);
+					}
 				} catch (error) {
+					failReason = `模型输出中断：${String(
+						(error as Error | undefined)?.message ?? error,
+					)}`;
 					appError("[customTranslation] streamResponse error", error);
 				}
 				setDeltaTranslateLoading(false);
 			} catch (error) {
+				failReason = String((error as Error | undefined)?.message ?? error);
 				appError("[customTranslation] error", error);
 			} finally {
 				setStartTranslateLoading(false);
+			}
+
+			// 请求出错、或正文为空（如思考型模型把 token 全耗在思考上、后端不可用）
+			// 都视为失败：不再静默回退官方接口，直接把原因报给用户
+			if (failReason || responseContent.trim() === "") {
+				return {
+					success: false,
+					errorMessage:
+						failReason ??
+						"模型返回内容为空（可尝试关闭思考模式或更换模型）",
+				};
 			}
 
 			const result =
@@ -424,33 +418,43 @@ export const useTranslationRequest = (options?: {
 			};
 		},
 		[
-			sourceLanguage,
-			targetLanguage,
-			translationDomain,
+			translationConfig?.translationSystemPrompt,
 			supportedTranslationTypesRef,
 			chatConfig?.maxTokens,
 			chatConfig?.temperature,
 			options,
-			translationConfig?.translationSystemPrompt,
 			setTranslatedContent,
 		],
 	);
 
 	const requestTranslate = useCallback(
 		async (sourceContent: string[], requestId?: number) => {
-			const translationType = translationTypeRef.current;
 			const translationDomain = translationDomainRef.current;
 			const sourceLanguage = sourceLanguageRef.current;
 			const targetLanguage = targetLanguageRef.current;
 
-			if (options?.lazyLoad) {
-				await reloadOnlineConfigs();
-				await new Promise((resolve) => setTimeout(resolve, 17));
-			}
-
-			if (reloadOnlineConfigsPromiseRef.current) {
-				await reloadOnlineConfigsPromiseRef.current;
-				await new Promise((resolve) => setTimeout(resolve, 17));
+			// 保存的翻译类型可能已失效（官方类型已停用 / 删除了自定义配置），
+			// 自动回退到「大模型」页配置的默认翻译模型，并修正保存的配置
+			let translationType: TranslationType | string =
+				translationTypeRef.current;
+			const supportedTypes = supportedTranslationTypesRef.current;
+			if (
+				supportedTypes.length > 0 &&
+				!supportedTypes.some((item) => item.type === translationType)
+			) {
+				const fallback =
+					// 优先「大模型」页配置的默认翻译模型
+					supportedTypes.find(
+						(item) => "apiConfig" in item && item.type === defaultTranslateModel,
+					) ??
+					// 其次第一个自定义模型（如本地 Ollama）
+					supportedTypes.find((item) => "apiConfig" in item) ??
+					// 最后自定义翻译 API（DeepL）
+					supportedTypes.find((item) => "translationApiConfig" in item);
+				if (fallback) {
+					translationType = fallback.type;
+					updateTranslationType(translationType);
+				}
 			}
 
 			if (typeof translationType === "string") {
@@ -458,58 +462,33 @@ export const useTranslationRequest = (options?: {
 					sourceContent: sourceContent,
 					sourceLanguage: sourceLanguage,
 					targetLanguage: targetLanguage,
-					translationType: translationType,
 					translationDomain: translationDomain,
+					translationType: translationType,
 					requestId: requestId,
 				});
 				if (result.success) {
 					return;
 				}
-			}
 
-			setStartTranslateLoading(true);
-			let translateResult:
-				| ServiceResponse<TranslateData | undefined>
-				| undefined;
-			try {
-				translateResult = await translate({
-					content: sourceContent,
-					from: sourceLanguage,
-					to: targetLanguage,
-					domain: translationDomain,
-					type: translationType as TranslationType, // 如果没找到自定义模型，则报错
-				});
-			} catch (error) {
-				appError("[requestTranslate] error", error);
-				message.error("-1: Unknown error");
-			}
-
-			setStartTranslateLoading(false);
-
-			if (
-				!translateResult ||
-				!translateResult.success() ||
-				!translateResult.data?.results.length
-			) {
+				// 官方翻译接口已停用，自定义模型失败直接报错，不再静默回退
+				message.error(`翻译失败：${result.errorMessage ?? "未知错误"}`);
 				return;
 			}
 
-			options?.onComplete?.(translateResult.data?.results, requestId);
-			setTranslatedContent(
-				translateResult.data?.results.map((item) => item.content).join("\n") ??
-					"",
+			message.error(
+				"官方翻译接口已停用，请在「设置 · 大模型」中配置翻译模型",
 			);
 		},
 		[
 			customTranslation,
-			options,
 			sourceLanguageRef,
 			message,
 			targetLanguageRef,
 			translationDomainRef,
 			translationTypeRef,
-			setTranslatedContent,
-			reloadOnlineConfigs,
+			supportedTranslationTypesRef,
+			defaultTranslateModel,
+			updateTranslationType,
 		],
 	);
 
@@ -529,33 +508,6 @@ export const useTranslationRequest = (options?: {
 				updateAppSettings(
 					AppSettingsGroup.FunctionTranslation,
 					{ translationDomain },
-					true,
-					true,
-					true,
-					true,
-					false,
-				);
-			}
-		},
-		[updateAppSettings, options?.enableCacheConfig],
-	);
-
-	const updateTranslationType = useCallback(
-		(translationType: TranslationType | string) => {
-			if (options?.enableCacheConfig) {
-				updateAppSettings(
-					AppSettingsGroup.FunctionTranslationCache,
-					{ cacheTranslationType: translationType },
-					true,
-					true,
-					false,
-					true,
-					false,
-				);
-			} else {
-				updateAppSettings(
-					AppSettingsGroup.FunctionTranslation,
-					{ translationType },
 					true,
 					true,
 					true,

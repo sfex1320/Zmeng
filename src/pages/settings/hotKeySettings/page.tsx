@@ -15,7 +15,6 @@ import {
 	defaultDrawToolbarKeyEventSettings,
 } from "@/constants/drawToolbarKeyEvent";
 import {
-	PLUGIN_ID_AI_CHAT,
 	PLUGIN_ID_RAPID_OCR,
 	PLUGIN_ID_TRANSLATE,
 } from "@/constants/pluginService";
@@ -149,7 +148,6 @@ export const HotKeySettingsPage = () => {
 	const keyEventFormItemList = useMemo(() => {
 		const groupFormItemMap: Record<CommonKeyEventGroup, React.ReactNode[]> = {
 			[CommonKeyEventGroup.Translation]: [],
-			[CommonKeyEventGroup.Chat]: [],
 			[CommonKeyEventGroup.FixedContent]: [],
 		};
 
@@ -210,14 +208,7 @@ export const HotKeySettingsPage = () => {
 				form={commonKeyEventForm}
 			>
 				{keyEventFormItemListKeys
-					.filter((configGroup) => {
-						if (configGroup === CommonKeyEventGroup.Chat) {
-							return isReadyStatus?.(PLUGIN_ID_AI_CHAT);
-						}
-
-						return true;
-					})
-					.map((configGroup, index) => {
+				.map((configGroup, index) => {
 						return (
 							<div key={configGroup}>
 								<GroupTitle

@@ -128,12 +128,49 @@ impl VideoRecordService {
         }
     }
 
+    /// 解析实际可用的 ffmpeg：插件目录 → 随包/手动放置的 models 目录 → None（回退 PATH）
+    fn resolve_ffmpeg_path(&self) -> Option<PathBuf> {
+        if let Some(path) = &self.ffmpeg_path {
+            if path.is_file() {
+                return Some(path.clone());
+            }
+        }
+
+        // 官方下载源失效时的兜底：<exe 目录>/models/20251005/ffmpeg/ffmpeg(.exe)
+        // 用户可手动放置，也可随安装包/便携包分发
+        if let Ok(exe_path) = std::env::current_exe() {
+            #[cfg(target_os = "windows")]
+            let ffmpeg_file_name = "ffmpeg.exe";
+            #[cfg(target_os = "macos")]
+            let ffmpeg_file_name = "ffmpeg";
+
+            if let Some(exe_dir) = exe_path.parent() {
+                let bundled = exe_dir
+                    .join("models")
+                    .join("20251005")
+                    .join("ffmpeg")
+                    .join(ffmpeg_file_name);
+                if bundled.is_file() {
+                    return Some(bundled);
+                }
+            }
+        }
+
+        None
+    }
+
     pub fn get_ffmpeg_command(&self) -> FfmpegCommand {
-        FfmpegCommand::new_with_path(
-            self.ffmpeg_path
-                .as_ref()
-                .expect("[VideoRecordService] valid ffmpeg path"),
-        )
+        // 插件 ffmpeg 缺失时回退到 PATH 上的 ffmpeg：
+        // 旧实现在此 expect 直接 panic，插件下载失败会让整个应用崩溃重启
+        match self.resolve_ffmpeg_path() {
+            Some(path) => FfmpegCommand::new_with_path(path),
+            None => {
+                log::warn!(
+                    "[VideoRecordService] ffmpeg plugin missing, fallback to ffmpeg on PATH"
+                );
+                FfmpegCommand::new()
+            }
+        }
     }
 
     fn get_actual_video_size(
@@ -534,24 +571,44 @@ impl VideoRecordService {
         // 启动ffmpeg进程
         match command.spawn() {
             Ok(mut child) => {
-                for event in child.iter().unwrap() {
-                    if params.format == VideoFormat::Mp4 {
-                        match event {
-                            FfmpegEvent::Progress(_) => {
-                                self.child = Some(child);
-                                self.state = VideoRecordState::Recording;
-                                self.segments.push(segment_filename);
-                                self.segment_counter += 1;
-                                return Ok(());
+                let started = {
+                    let mut started = false;
+                    for event in child.iter().unwrap() {
+                        match params.format {
+                            VideoFormat::Mp4 => {
+                                if let FfmpegEvent::Progress(_) = event {
+                                    started = true;
+                                    break;
+                                }
                             }
-                            _ => {}
+                            // GIF 录制在停止前不会产生 Progress 事件：
+                            // 收到首条日志即视为已成功启动，否则旧逻辑会阻塞到 ffmpeg 退出
+                            VideoFormat::Gif => match event {
+                                FfmpegEvent::Log(_, _) => {
+                                    started = true;
+                                    break;
+                                }
+                                FfmpegEvent::Error(_) => {
+                                    break;
+                                }
+                                _ => {}
+                            },
                         }
                     }
+                    started
+                };
+
+                if started {
+                    self.child = Some(child);
+                    self.state = VideoRecordState::Recording;
+                    self.segments.push(segment_filename);
+                    self.segment_counter += 1;
+                    return Ok(());
                 }
 
                 Err(std::io::Error::new(
                     std::io::ErrorKind::Other,
-                    "Failed to start recording segment",
+                    "Failed to start recording segment (ffmpeg 未就绪或参数无效：可在 设置·插件 安装 ffmpeg，或将其放入程序目录/系统 PATH)",
                 ))
             }
             Err(e) => {

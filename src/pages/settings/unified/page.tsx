@@ -15,24 +15,24 @@ import {
 	TranslationOutlined,
 	VideoCameraOutlined,
 } from "@ant-design/icons";
+import { emit } from "@tauri-apps/api/event";
+import * as dialog from "@tauri-apps/plugin-dialog";
+import { openPath } from "@tauri-apps/plugin-opener";
+import { relaunch } from "@tauri-apps/plugin-process";
 import {
 	Button,
 	Input,
 	InputNumber,
-	message,
 	Modal,
+	message,
 	Segmented,
 	Select,
 	Slider,
 	Space,
 	Switch,
-	theme,
 	Typography,
+	theme,
 } from "antd";
-import { emit } from "@tauri-apps/api/event";
-import * as dialog from "@tauri-apps/plugin-dialog";
-import { openPath } from "@tauri-apps/plugin-opener";
-import { relaunch } from "@tauri-apps/plugin-process";
 import type React from "react";
 import {
 	useCallback,
@@ -50,6 +50,8 @@ import { DirectoryInput } from "@/components/directoryInput";
 import { GlobalShortcutContext } from "@/components/globalShortcut";
 import { KeyButton } from "@/components/keyButton";
 import { ThemeSwitcher } from "@/components/themeSwitcher";
+import { CUSTOM_MODEL_PREFIX } from "@/constants/components/chat";
+import { llmBackendTemplates } from "@/constants/llmBackends";
 import { AppSettingsActionContext } from "@/contexts/appSettingsActionContext";
 import { useAppSettingsLoad } from "@/hooks/useAppSettingsLoad";
 import {
@@ -149,9 +151,9 @@ const CATEGORIES: {
 	},
 	{
 		key: "ai",
-		label: "AI 助手",
+		label: "大模型",
 		icon: <RobotOutlined />,
-		desc: "模型后端与参数",
+		desc: "后端 · 用途分配 · 参数",
 	},
 	{
 		key: "clipboard",
@@ -184,7 +186,6 @@ const SHORTCUT_ITEMS: { fn: AppFunction; label: string }[] = [
 	{ fn: AppFunction.ScreenshotFullScreen, label: "全屏截图" },
 	{ fn: AppFunction.ScreenshotOcr, label: "OCR 文字识别" },
 	{ fn: AppFunction.Translation, label: "翻译" },
-	{ fn: AppFunction.Chat, label: "AI 助手" },
 	{ fn: AppFunction.ClipboardSidebar, label: "剪贴板侧栏" },
 	{ fn: AppFunction.PasteAsPlainText, label: "粘贴为纯文本" },
 ];
@@ -202,7 +203,10 @@ const Row: React.FC<{
 			<div className="s-row-label">
 				<div className="s-row-title">{title}</div>
 				{desc && (
-					<div className="s-row-desc" style={{ color: token.colorTextTertiary }}>
+					<div
+						className="s-row-desc"
+						style={{ color: token.colorTextTertiary }}
+					>
 						{desc}
 					</div>
 				)}
@@ -320,12 +324,27 @@ export const UnifiedSettingsPage: React.FC<{ category: CatKey }> = ({
 	const zmengStoreRef = useRef<ZmengSettingsStore | undefined>(undefined);
 	const [zmeng, setZmeng] = useState<ZmengSettings | undefined>(undefined);
 	useEffect(() => {
+		let disposed = false;
 		const st = new ZmengSettingsStore();
 		zmengStoreRef.current = st;
 		// 必须先 init() 再读写，否则 get/set 抛 "Store not initialized"，导致设置不落盘
 		st.init()
 			.then(() => st.loadSettings())
-			.then(setZmeng);
+			.then((loaded) => {
+				if (disposed || !loaded) return;
+				// 加载完成晚于用户编辑（zmengRef 已有值）时不覆盖用户的修改
+				if (!zmengRef.current) setZmeng(loaded);
+			})
+			.catch(() => {
+				// 初始化失败时保持默认值渲染；此时设置改动可能不落盘
+			});
+		return () => {
+			disposed = true;
+			// 卸载时清掉挂起的落盘定时器，避免卸载后仍触发落盘/广播
+			if (persistTimerRef.current) {
+				clearTimeout(persistTimerRef.current);
+			}
+		};
 	}, []);
 	// 用 ref 镜像当前值，使副作用（落盘/广播）在 setState 更新器之外执行（#19）
 	const zmengRef = useRef<ZmengSettings | undefined>(undefined);
@@ -484,6 +503,40 @@ export const UnifiedSettingsPage: React.FC<{ category: CatKey }> = ({
 									onChange={(v) =>
 										update(AppSettingsGroup.SystemCommon, { autoStart: v })
 									}
+								/>
+							</Row>
+							<Row
+								title="以管理员身份自启动"
+								desc="开机自动以管理员运行（计划任务方式，开机不弹 UAC）；开启后可向管理员程序粘贴。首次开启需立即以管理员重启一次"
+							>
+								<Switch
+									checked={sysCommon.adminAutoStart}
+									disabled={!sysCommon.autoStart}
+									onChange={(v) => {
+										if (!v) {
+											update(AppSettingsGroup.SystemCommon, {
+												adminAutoStart: false,
+											});
+											return;
+										}
+										Modal.confirm({
+											title: "以管理员身份自启动",
+											content:
+												"将创建管理员计划任务实现开机自动提权（后续开机不再弹 UAC）。需要现在以管理员身份重启一次来完成创建，是否继续？",
+											okText: "以管理员重启",
+											cancelText: "取消",
+											onOk: async () => {
+												update(AppSettingsGroup.SystemCommon, {
+													adminAutoStart: true,
+												});
+												try {
+													await restartWithAdmin();
+												} catch (error) {
+													message.error(`提权失败：${error}`);
+												}
+											},
+										});
+									}}
 								/>
 							</Row>
 							<Row
@@ -683,7 +736,10 @@ export const UnifiedSettingsPage: React.FC<{ category: CatKey }> = ({
 								}
 								options={[
 									{ label: "RapidOCR V4（快速）", value: OcrModel.RapidOcrV4 },
-									{ label: "RapidOCR V5（高精度）", value: OcrModel.RapidOcrV5 },
+									{
+										label: "RapidOCR V5（高精度）",
+										value: OcrModel.RapidOcrV5,
+									},
 								]}
 							/>
 						</Row>
@@ -791,7 +847,11 @@ export const UnifiedSettingsPage: React.FC<{ category: CatKey }> = ({
 				const list = chat.chatApiConfigList;
 				const updateItem = (idx: number, p: Partial<ChatApiConfig>) => {
 					const next = list.map((it, i) => (i === idx ? { ...it, ...p } : it));
-					update(AppSettingsGroup.FunctionChat, { chatApiConfigList: next }, true);
+					update(
+						AppSettingsGroup.FunctionChat,
+						{ chatApiConfigList: next },
+						true,
+					);
 				};
 				const removeItem = (idx: number) => {
 					update(AppSettingsGroup.FunctionChat, {
@@ -801,27 +861,16 @@ export const UnifiedSettingsPage: React.FC<{ category: CatKey }> = ({
 					setAiModels((prev) => shiftIndexMap(prev, idx));
 					setAiTest((prev) => shiftIndexMap(prev, idx));
 				};
-				const addItem = (type: "cloud" | "ollama") => {
-					const item: ChatApiConfig =
-						type === "ollama"
-							? {
-									model_name: "Ollama 本地",
-									api_uri: "http://localhost:11434/v1",
-									api_key: "ollama",
-									api_model: "",
-									support_thinking: false,
-									support_vision: false,
-								}
-							: {
-									model_name: "云端模型",
-									api_uri: "https://api.openai.com/v1",
-									api_key: "",
-									api_model: "gpt-4o-mini",
-									support_thinking: false,
-									support_vision: false,
-								};
+				// 预设模板一键添加（momo 中转站 / Ollama / 自定义）
+				const addFromTemplate = (templateKey: string) => {
+					const template = llmBackendTemplates.find(
+						(t) => t.key === templateKey,
+					);
+					if (!template) {
+						return;
+					}
 					update(AppSettingsGroup.FunctionChat, {
-						chatApiConfigList: [...list, item],
+						chatApiConfigList: [...list, { ...template.config }],
 					});
 				};
 				const pullModels = async (idx: number, item: ChatApiConfig) => {
@@ -857,6 +906,17 @@ export const UnifiedSettingsPage: React.FC<{ category: CatKey }> = ({
 						message.warning("连接失败：请检查地址 / 密钥 / 模型");
 					}
 				};
+				// 用途分配下拉：所有后端（视觉用途仅列支持视觉的后端）
+				const backendOptions = list.map((it) => ({
+					label: `${it.model_name || "未命名"}${it.api_model ? ` · ${it.api_model}` : ""}`,
+					value: `${CUSTOM_MODEL_PREFIX}${it.api_model}`,
+				}));
+				const visionBackendOptions = list
+					.filter((it) => it.support_vision)
+					.map((it) => ({
+						label: `${it.model_name || "未命名"}${it.api_model ? ` · ${it.api_model}` : ""}`,
+						value: `${CUSTOM_MODEL_PREFIX}${it.api_model}`,
+					}));
 				return (
 					<>
 						<Section title="模型后端">
@@ -868,18 +928,21 @@ export const UnifiedSettingsPage: React.FC<{ category: CatKey }> = ({
 									flexWrap: "wrap",
 								}}
 							>
-								<Button
-									icon={<DesktopOutlined />}
-									onClick={() => addItem("ollama")}
-								>
-									添加 Ollama 本地
-								</Button>
-								<Button
-									icon={<CloudOutlined />}
-									onClick={() => addItem("cloud")}
-								>
-									添加云端 API
-								</Button>
+								{llmBackendTemplates.map((t) => (
+									<Button
+										key={t.key}
+										icon={
+											t.key === "ollama" ? (
+												<DesktopOutlined />
+											) : (
+												<CloudOutlined />
+											)
+										}
+										onClick={() => addFromTemplate(t.key)}
+									>
+										添加{t.label}
+									</Button>
+								))}
 							</div>
 							{list.length === 0 && (
 								<div
@@ -889,13 +952,16 @@ export const UnifiedSettingsPage: React.FC<{ category: CatKey }> = ({
 										fontSize: 13,
 									}}
 								>
-									还没有配置任何 AI 后端。本地推荐 Ollama，云端可填 OpenAI
-									兼容地址。
+									还没有配置任何大模型后端。推荐一键添加 momo 中转站（MiniMax-M2，翻译/AI
+									开箱即用），本地可用 Ollama，或填任意 OpenAI 兼容地址。
 								</div>
 							)}
-							<div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+							<div
+								style={{ display: "flex", flexDirection: "column", gap: 12 }}
+							>
 								{list.map((item, idx) => (
 									<div
+										// biome-ignore lint/suspicious/noArrayIndexKey: 后端配置项无稳定 id，重排仅发生在整表编辑场景
 										key={`chat-${idx}`}
 										style={{
 											border: `1px solid ${token.colorBorderSecondary}`,
@@ -963,9 +1029,7 @@ export const UnifiedSettingsPage: React.FC<{ category: CatKey }> = ({
 																AppSettingsGroup.FunctionChat,
 																{
 																	chatApiConfigList: list.map((it, i) =>
-																		i === idx
-																			? { ...it, api_model: v }
-																			: it,
+																		i === idx ? { ...it, api_model: v } : it,
 																	),
 																},
 																false,
@@ -1032,17 +1096,74 @@ export const UnifiedSettingsPage: React.FC<{ category: CatKey }> = ({
 								))}
 							</div>
 						</Section>
-						<Section title="对话参数">
-							<Row title="自动新建会话" desc="每次打开自动开启新对话">
-								<Switch
-									checked={chat.autoCreateNewSession}
+						<Section title="用途分配">
+							<Row
+								title="翻译默认模型"
+								desc="截图 OCR 翻译与剪贴板翻译优先使用该模型"
+							>
+								<Select
+									style={{ width: 260 }}
+									placeholder="自动（列表第一个）"
+									value={
+										backendOptions.some((o) => o.value === chat.defaultTranslateModel)
+											? chat.defaultTranslateModel
+											: undefined
+									}
 									onChange={(v) =>
 										update(AppSettingsGroup.FunctionChat, {
-											autoCreateNewSession: v,
+											defaultTranslateModel: v ?? "",
 										})
 									}
+									options={backendOptions}
+									allowClear
 								/>
 							</Row>
+							<Row
+								title="剪贴板 AI 默认模型"
+								desc="侧栏「总结 / 解释 / 优化」等动作优先使用该模型"
+							>
+								<Select
+									style={{ width: 260 }}
+									placeholder="自动（列表第一个）"
+									value={
+										backendOptions.some((o) => o.value === chat.defaultAiModel)
+											? chat.defaultAiModel
+											: undefined
+									}
+									onChange={(v) =>
+										update(AppSettingsGroup.FunctionChat, {
+											defaultAiModel: v ?? "",
+										})
+									}
+									options={backendOptions}
+									allowClear
+								/>
+							</Row>
+							<Row
+								title="视觉（图片识别）默认模型"
+								desc="剪贴板图片分析、图片转 HTML 使用；需后端开启「支持视觉」"
+							>
+								<Select
+									style={{ width: 260 }}
+									placeholder="自动（第一个支持视觉的后端）"
+									value={
+										visionBackendOptions.some(
+											(o) => o.value === chat.defaultVisionModel,
+										)
+											? chat.defaultVisionModel
+											: undefined
+									}
+									onChange={(v) =>
+										update(AppSettingsGroup.FunctionChat, {
+											defaultVisionModel: v ?? "",
+										})
+									}
+									options={visionBackendOptions}
+									allowClear
+								/>
+							</Row>
+						</Section>
+						<Section title="模型参数">
 							<Row title="最大 Token" desc="单次回复的最大长度">
 								<InputNumber
 									min={512}
@@ -1066,7 +1187,11 @@ export const UnifiedSettingsPage: React.FC<{ category: CatKey }> = ({
 									step={0.1}
 									value={sysChat.temperature}
 									onChange={(v) =>
-										update(AppSettingsGroup.SystemChat, { temperature: v }, true)
+										update(
+											AppSettingsGroup.SystemChat,
+											{ temperature: v },
+											true,
+										)
 									}
 								/>
 							</Row>
@@ -1083,7 +1208,9 @@ export const UnifiedSettingsPage: React.FC<{ category: CatKey }> = ({
 							<Row title="停靠侧" desc="侧栏从哪一侧滑出">
 								<Segmented
 									value={z.dockSide}
-									onChange={(v) => updateZmeng({ dockSide: v as "left" | "right" })}
+									onChange={(v) =>
+										updateZmeng({ dockSide: v as "left" | "right" })
+									}
 									options={[
 										{ label: "左侧", value: "left" },
 										{ label: "右侧", value: "right" },
@@ -1129,19 +1256,33 @@ export const UnifiedSettingsPage: React.FC<{ category: CatKey }> = ({
 									onChange={(v) => updateZmeng({ autoHideOnCopy: v })}
 								/>
 							</Row>
+							<Row
+								title="粘贴后自动收拢"
+								desc="点击内容粘贴到其他应用后，侧栏自动滑走"
+							>
+								<Switch
+									checked={z.autoCollapseOnPaste}
+									onChange={(v) => updateZmeng({ autoCollapseOnPaste: v })}
+								/>
+							</Row>
+							<Row
+								title="点击其他位置自动收拢"
+								desc="鼠标点进其他应用（侧栏失焦）后自动收起"
+							>
+								<Switch
+									checked={z.autoHideOnBlur}
+									onChange={(v) => updateZmeng({ autoHideOnBlur: v })}
+								/>
+							</Row>
 						</Section>
 						<Section title="翻译">
-							<Row title="翻译引擎">
-								<Segmented
-									value={z.translateEngine}
-									onChange={(v) =>
-										updateZmeng({ translateEngine: v as "llm" | "official" })
-									}
-									options={[
-										{ label: "大模型（自包含）", value: "llm" },
-										{ label: "官方在线", value: "official" },
-									]}
-								/>
+							<Row
+								title="翻译模型"
+								desc="剪贴板翻译使用「设置 · 大模型」中分配的默认翻译模型"
+							>
+								<span style={{ color: token.colorTextSecondary, fontSize: 13 }}>
+									在「大模型 · 用途分配」中调整
+								</span>
 							</Row>
 							<Row title="目标语言">
 								<Input
@@ -1163,8 +1304,8 @@ export const UnifiedSettingsPage: React.FC<{ category: CatKey }> = ({
 								}}
 							>
 								剪贴板侧栏的「总结 / 解释 / 翻译」等 AI 动作，已统一使用
-								<b style={{ color: token.colorText }}>「设置 · AI 助手」</b>
-								中配置的模型后端，无需在此重复设置。
+								<b style={{ color: token.colorText }}>「设置 · 大模型」</b>
+								中配置的后端与用途分配，无需在此重复设置。
 							</div>
 						</Section>
 					</>
@@ -1175,7 +1316,10 @@ export const UnifiedSettingsPage: React.FC<{ category: CatKey }> = ({
 				return (
 					<>
 						<Section title="基础设置">
-							<Row title="分辨率上限" desc="录制画面缩放到不超过此高度，越低文件越小">
+							<Row
+								title="分辨率上限"
+								desc="录制画面缩放到不超过此高度，越低文件越小"
+							>
 								<Select
 									style={{ width: 160 }}
 									value={video.videoMaxSize}
@@ -1185,7 +1329,8 @@ export const UnifiedSettingsPage: React.FC<{ category: CatKey }> = ({
 										})
 									}
 									options={[
-										{ label: "原始（2160p 上限）", value: VideoMaxSize.P2160 },
+										{ label: "原始（不降采样）", value: VideoMaxSize.Original },
+										{ label: "2160p", value: VideoMaxSize.P2160 },
 										{ label: "1440p", value: VideoMaxSize.P1440 },
 										{ label: "1080p", value: VideoMaxSize.P1080 },
 										{ label: "720p", value: VideoMaxSize.P720 },
@@ -1193,7 +1338,10 @@ export const UnifiedSettingsPage: React.FC<{ category: CatKey }> = ({
 									]}
 								/>
 							</Row>
-							<Row title="录制时隐藏工具栏" desc="录制画面中不出现 ZMENG 的录制控制条">
+							<Row
+								title="录制时隐藏工具栏"
+								desc="录制画面中不出现 ZMENG 的录制控制条"
+							>
 								<Switch
 									checked={video.enableExcludeFromCapture}
 									onChange={(v) =>
@@ -1203,7 +1351,10 @@ export const UnifiedSettingsPage: React.FC<{ category: CatKey }> = ({
 									}
 								/>
 							</Row>
-							<Row title="硬件加速" desc="使用 GPU 编码，更省 CPU（取决于显卡支持）">
+							<Row
+								title="硬件加速"
+								desc="使用 GPU 编码，更省 CPU（取决于显卡支持）"
+							>
 								<Switch
 									checked={video.hwaccel}
 									onChange={(v) =>
@@ -1219,7 +1370,9 @@ export const UnifiedSettingsPage: React.FC<{ category: CatKey }> = ({
 									style={{ width: 160 }}
 									value={video.frameRate}
 									onChange={(v) =>
-										update(AppSettingsGroup.FunctionVideoRecord, { frameRate: v })
+										update(AppSettingsGroup.FunctionVideoRecord, {
+											frameRate: v,
+										})
 									}
 									options={[
 										{ label: "15 fps", value: 15 },
@@ -1268,7 +1421,10 @@ export const UnifiedSettingsPage: React.FC<{ category: CatKey }> = ({
 						</Section>
 
 						<Section title="编码与音频">
-							<Row title="编码器" desc="libx264 兼容性最好；含 GPU 的可选硬件编码器">
+							<Row
+								title="编码器"
+								desc="libx264 兼容性最好；含 GPU 的可选硬件编码器"
+							>
 								<Select
 									style={{ width: 200 }}
 									value={video.encoder}
@@ -1301,7 +1457,10 @@ export const UnifiedSettingsPage: React.FC<{ category: CatKey }> = ({
 									]}
 								/>
 							</Row>
-							<Row title="麦克风设备" desc="录制时采集的麦克风；不指定则不录麦克风">
+							<Row
+								title="麦克风设备"
+								desc="录制时采集的麦克风；不指定则不录麦克风"
+							>
 								<Select
 									style={{ width: 240 }}
 									value={video.microphoneDeviceName || ""}
@@ -1321,7 +1480,9 @@ export const UnifiedSettingsPage: React.FC<{ category: CatKey }> = ({
 									style={{ width: 160 }}
 									value={video.gifFormat}
 									onChange={(v) =>
-										update(AppSettingsGroup.FunctionVideoRecord, { gifFormat: v })
+										update(AppSettingsGroup.FunctionVideoRecord, {
+											gifFormat: v,
+										})
 									}
 									options={[
 										{ label: "GIF", value: GifFormat.Gif },

@@ -85,6 +85,11 @@ const convertVideoMaxSizeToWidthAndHeight = (
 	let videoMaxWidth = 1920;
 	let videoMaxHeight = 1080;
 	switch (videoMaxSize) {
+		case VideoMaxSize.Original:
+			// 原始分辨率：用超大的上限值表示"不降采样"
+			videoMaxWidth = 16384;
+			videoMaxHeight = 16384;
+			break;
 		case VideoMaxSize.P2160:
 			videoMaxWidth = 3840;
 			videoMaxHeight = 2160;

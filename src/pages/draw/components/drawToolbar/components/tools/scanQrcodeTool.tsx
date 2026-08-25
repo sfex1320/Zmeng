@@ -65,16 +65,9 @@ const ScanQrcodeToolCore: React.FC = () => {
 
 		tempCtx.drawImage(imageBitmap, 0, 0);
 
-		// biome-ignore lint/suspicious/noExplicitAny: 方便 CDN 加载
-		let QrCodeScanner: any;
-		if (import.meta.env.PUBLIC_ONLINE_STATUS === "true") {
-			QrCodeScanner = await import(
-				// @ts-expect-error
-				"https://snowshot.top/npm/qr-scanner-wechat/dist/index.mjs"
-			);
-		} else {
-			QrCodeScanner = await import("qr-scanner-wechat");
-		}
+		// 直接使用本地打包的 qr-scanner-wechat，不再依赖 snowshot.top CDN（离线可用）
+		// biome-ignore lint/suspicious/noExplicitAny: 模块无类型声明
+		const QrCodeScanner: any = await import("qr-scanner-wechat");
 		try {
 			await QrCodeScanner.ready();
 			const result = await QrCodeScanner.scan(tempCanvas);

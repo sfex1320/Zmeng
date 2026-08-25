@@ -24,7 +24,6 @@ import {
 import { DrawState } from "@/types/draw";
 import {
 	TranslationDomain,
-	TranslationType,
 } from "@/types/servies/translation";
 import { ImageFormat } from "@/types/utils/file";
 import { getPlatformValue } from "@/utils/platform";
@@ -33,6 +32,10 @@ import { defaultCommonKeyEventSettings } from "./commonKeyEvent";
 import { FOCUS_WINDOW_APP_NAME_ENV_VARIABLE } from "./components/chat";
 import { defaultTranslationPrompt } from "./components/translation";
 import { defaultDrawToolbarKeyEventSettings } from "./drawToolbarKeyEvent";
+import {
+	MOMO_DEFAULT_MODEL_TYPE,
+	momoBackendPreset,
+} from "./llmBackends";
 
 export const defaultAppSettingsData: AppSettingsData = {
 	[AppSettingsGroup.Common]: {
@@ -122,11 +125,13 @@ export const defaultAppSettingsData: AppSettingsData = {
 	},
 	[AppSettingsGroup.SystemCommon]: {
 		autoStart: true,
+		adminAutoStart: false,
 		autoCheckVersion: true,
 		runLog: false,
 	},
 	[AppSettingsGroup.SystemChat]: {
-		maxTokens: 4096,
+		// 思考型模型（MiniMax-M2 等）推理也消耗 token，默认给到上限避免译文被截断
+		maxTokens: 8192,
 		temperature: 1,
 		thinkingBudgetTokens: 4096,
 	},
@@ -136,7 +141,11 @@ export const defaultAppSettingsData: AppSettingsData = {
 	[AppSettingsGroup.FunctionChat]: {
 		autoCreateNewSession: true,
 		autoCreateNewSessionOnCloseWindow: true,
-		chatApiConfigList: [],
+		// 默认预置 momo 中转站（MiniMax-M2），翻译与剪贴板 AI 开箱即用
+		chatApiConfigList: [momoBackendPreset],
+		defaultTranslateModel: MOMO_DEFAULT_MODEL_TYPE,
+		defaultAiModel: MOMO_DEFAULT_MODEL_TYPE,
+		defaultVisionModel: "",
 	},
 	[AppSettingsGroup.FunctionTranslation]: {
 		optimizeAiTranslationLayout: true,
@@ -145,13 +154,14 @@ export const defaultAppSettingsData: AppSettingsData = {
 		sourceLanguage: "auto",
 		targetLanguage: "zh-CHS",
 		translationDomain: TranslationDomain.General,
-		translationType: TranslationType.Youdao,
+		// 默认走自定义 LLM（momo 中转站 MiniMax-M2），不再依赖官方翻译接口
+		translationType: MOMO_DEFAULT_MODEL_TYPE,
 	},
 	[AppSettingsGroup.FunctionTranslationCache]: {
 		cacheSourceLanguage: "auto",
 		cacheTargetLanguage: "zh-CHS",
 		cacheTranslationDomain: TranslationDomain.General,
-		cacheTranslationType: TranslationType.Youdao,
+		cacheTranslationType: MOMO_DEFAULT_MODEL_TYPE,
 	},
 	[AppSettingsGroup.FunctionOcr]: {
 		htmlVisionModel: "",

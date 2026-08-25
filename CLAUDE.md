@@ -46,6 +46,16 @@ pnpm tauri build    # 出 EXE：target/release/zmeng.exe + bundle/nsis 安装包
 - **接线**：`AppFunction.ClipboardSidebar`（`types/components/appFunction.ts` + `constants/appFunction.ts`）；`components/globalShortcut/index.tsx`（switch case）；`components/trayIconLoader.tsx`（托盘项）；`messages/zhHans/home.ts`。
 - **配置**：`src-tauri/tauri.conf.json`（品牌 + `clipboard-sidebar` 窗口）；`tauri.windows.conf.json`（identifier `com.zmeng.app`，已关 updater 工件）；`capabilities/default.json`（剪贴板监听权限）。
 
+## 打包 / 发布规范（APP 目录 = 对外交付）
+
+- **产物目录 `APP/`**，绿色版"三件套"缺一不可：
+  1. `zmeng.exe` —— 主程序
+  2. `app-icons/` —— **托盘图标资源，必须随行**。缺失会导致托盘无图标、应用隐形驻留后台
+  3. `__portable` —— 空标记文件，便携版识别。作用：① 首次启动自动检测桌面 `ZMENG.lnk`，**没有则创建（指向当前 exe），已有则跳过**（Rust 侧 `create_desktop_shortcut_if_portable`，lib.rs setup 调用，属既定产品行为，勿移除）；② 跳过安装包自动更新
+- **拷贝流程**：`pnpm tauri build` 后，从 `src-tauri/target/release/` 拷 `zmeng.exe` 与 `app-icons/` 到 `APP/`；`__portable` 保留不覆盖；安装包 `bundle/nsis/*.exe` 一并更新；同步维护 `APP/构建说明.md`
+- **重建前必须退出运行中的实例**（`taskkill /IM zmeng.exe /F`），否则链接器无法写入被占用的 exe
+- 数据目录优先级：`__custom_config_dir`（当前 D:\剪贴板数据）> `__portable` > `%APPDATA%`；便携标记不影响用户已有数据
+
 ## 关键约定 / 注意
 
 - 复用优先：截图用 `executeScreenshot(ScreenshotType.*)`；AI 用 `openai` SDK + `appFetch`（`@/services/tools`）+ `dangerouslyAllowBrowser`；存储继承 `BaseStore`（`@/utils/appStore`）。

@@ -391,25 +391,31 @@ impl MonitorList {
         }
 
         // 将每个显示器截取的图像，绘制到该图像上
+        // 携带原始显示器索引：采集失败的显示器会被过滤掉，若拼接时仍按列表下标取
+        // monitor 会发生索引错位 → 偏移计算错误 → 越界拷贝（多屏崩溃的根源）
         let monitor_image_list = monitors
             .par_iter()
-            .filter(|monitor| monitor.rect.overlaps(&crop_region.unwrap_or(ElementRect {
-                min_x: i32::MIN,
-                min_y: i32::MIN,
-                max_x: i32::MAX,
-                max_y: i32::MAX,
-            })))
-            .map(|monitor| {
+            .enumerate()
+            .filter(|(_, monitor)| {
+                monitor.rect.overlaps(&crop_region.unwrap_or(ElementRect {
+                    min_x: i32::MIN,
+                    min_y: i32::MIN,
+                    max_x: i32::MAX,
+                    max_y: i32::MAX,
+                }))
+            })
+            .filter_map(|(index, monitor)| {
                 let monitor_crop_region = if let Some(crop_region) = crop_region {
                     Some(monitor.get_monitor_crop_region(crop_region))
                 } else {
                     None
                 };
 
-                let capture_image = monitor.capture(monitor_crop_region, exclude_window, capture_option);
+                let capture_image =
+                    monitor.capture(monitor_crop_region, exclude_window, capture_option);
 
                 match capture_image {
-                    Some(image) => Some((image, monitor_crop_region)),
+                    Some(image) => Some((index, image, monitor_crop_region)),
                     None => {
                         log::warn!(
                             "[MonitorInfoList::capture] Failed to capture monitor image, monitor rect: {:?}",
@@ -420,11 +426,7 @@ impl MonitorList {
                     }
                 }
             })
-            .filter_map(|result| match result {
-                Some((image, monitor_crop_region)) => Some((image, monitor_crop_region)),
-                None => None,
-            })
-            .collect::<Vec<(image::DynamicImage, Option<ElementRect>)>>();
+            .collect::<Vec<(usize, image::DynamicImage, Option<ElementRect>)>>();
 
         if monitor_image_list.is_empty() {
             return Err(format!(
@@ -459,9 +461,9 @@ impl MonitorList {
 
         let capture_image_pixels_ptr = capture_image_pixels.as_mut_ptr() as usize;
 
-        monitor_image_list.par_iter().enumerate().for_each(
-            |(index, (monitor_image, monitor_crop_region))| {
-                let monitor = &monitors[index];
+        monitor_image_list.par_iter().for_each(
+            |(monitor_index, monitor_image, monitor_crop_region)| {
+                let monitor = &monitors[*monitor_index];
 
                 // 计算显示器在合并图像中的位置
                 let offset_x: i32;
@@ -491,6 +493,7 @@ impl MonitorList {
                 super::overlay_image_ptr(
                     capture_image_pixels_ptr as *mut u8,
                     capture_image_width,
+                    capture_image_height,
                     monitor_image,
                     offset_x as usize,
                     offset_y as usize,

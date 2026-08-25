@@ -3,6 +3,7 @@ import { initUiElements } from "@/commands";
 import {
 	autoStartDisable,
 	autoStartEnable,
+	isAdmin,
 	setEnableProxy,
 	setRunLog,
 } from "@/commands/core";
@@ -99,13 +100,28 @@ export const InitService = () => {
 			process.env.NODE_ENV !== "development" &&
 			(!hasInitAutoStart.current ||
 				(prevAppSettings &&
-					appSettings[AppSettingsGroup.SystemCommon].autoStart !==
-						prevAppSettings[AppSettingsGroup.SystemCommon].autoStart))
+					(appSettings[AppSettingsGroup.SystemCommon].autoStart !==
+						prevAppSettings[AppSettingsGroup.SystemCommon].autoStart ||
+						appSettings[AppSettingsGroup.SystemCommon].adminAutoStart !==
+							prevAppSettings[AppSettingsGroup.SystemCommon].adminAutoStart)))
 		) {
 			hasInitAutoStart.current = true;
 
 			if (appSettings[AppSettingsGroup.SystemCommon].autoStart) {
-				autoStartEnable();
+				if (appSettings[AppSettingsGroup.SystemCommon].adminAutoStart) {
+					// 管理员自启动：以计划任务实现（开机静默提权，不弹 UAC）。
+					// 仅当当前已以管理员运行时才创建/更新任务；
+					// 普通权限启动时不动注册表，避免与计划任务形成双重自启
+					isAdmin()
+						.then((admin) => {
+							if (admin) {
+								autoStartEnable();
+							}
+						})
+						.catch(() => {});
+				} else {
+					autoStartEnable();
+				}
 			} else {
 				autoStartDisable();
 			}

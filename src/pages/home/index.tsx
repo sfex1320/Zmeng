@@ -11,13 +11,14 @@ import {
 import { Button, theme, Typography } from "antd";
 import type React from "react";
 import { useCallback, useContext, useMemo } from "react";
+import { useRouter } from "@tanstack/react-router";
 import { CheckPermissions } from "@/components/checkPermissions";
 import { ContentWrap } from "@/components/contentWrap";
 import { GlobalShortcutContext } from "@/components/globalShortcut";
 import { ThemeSwitcher } from "@/components/themeSwitcher";
 import { toggleClipboardSidebar } from "@/functions/clipboardSidebar";
 import { executeScreenshot } from "@/functions/screenshot";
-import { executeChat, executeTranslate } from "@/functions/tools";
+import { executeTranslate } from "@/functions/tools";
 import { AppFunction } from "@/types/components/appFunction";
 import { ScreenshotType } from "@/utils/types";
 
@@ -46,6 +47,11 @@ type FeatureDef = {
 export const HomePage = () => {
 	const { token } = theme.useToken();
 	const { appFunctionSettings } = useContext(GlobalShortcutContext);
+	const router = useRouter();
+
+	const openAiSettings = useCallback(() => {
+		router.navigate({ to: "/settings/$cat", params: { cat: "ai" } });
+	}, [router]);
 
 	const shortcutOf = useCallback(
 		(fn?: AppFunction) =>
@@ -85,10 +91,9 @@ export const HomePage = () => {
 			{
 				key: "ai",
 				icon: <RobotOutlined />,
-				title: "AI 助手",
-				desc: "本地 Ollama 或云端 API，对话与处理",
-				primary: { label: "打开 AI", onClick: () => executeChat() },
-				shortcutFn: AppFunction.Chat,
+				title: "大模型",
+				desc: "翻译 / AI 处理统一后端，集中配置",
+				primary: { label: "大模型设置", onClick: () => openAiSettings() },
 				accent: "#c084fc",
 			},
 			{
@@ -101,7 +106,7 @@ export const HomePage = () => {
 				accent: "#f0843f",
 			},
 		],
-		[],
+		[openAiSettings],
 	);
 
 	const cardBase: React.CSSProperties = {

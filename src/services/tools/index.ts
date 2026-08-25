@@ -229,6 +229,28 @@ function directProxyFor(
 	return undefined;
 }
 
+/**
+ * DashScope/qwen 系端点（snowshot.top 官方、阿里百炼、硅基流动等）默认启用「思考」模式：
+ * 首字之前会先输出一段 reasoning_content，翻译/快捷 AI 动作这类简单任务不需要，
+ * 且期间界面无任何输出、体感延迟成倍增加。对这些端点附加 enable_thinking:false 可提速约 3 倍；
+ * 其他端点（OpenAI 等会严格校验未知参数）不发送，避免 400。
+ */
+export const qwenThinkingDisableParams = (
+	apiUri: string,
+): { enable_thinking?: boolean } => {
+	try {
+		const h = new URL(apiUri).hostname.toLowerCase();
+		const isDashLike =
+			h.includes("snowshot.top") ||
+			h.includes("dashscope") ||
+			h.includes("aliyuncs") ||
+			h.includes("siliconflow");
+		return isDashLike ? { enable_thinking: false } : {};
+	} catch {
+		return {};
+	}
+};
+
 export const appFetch = (async (...params: Parameters<typeof fetch>) => {
 	try {
 		const directProxy = directProxyFor(params[0]);

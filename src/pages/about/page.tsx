@@ -1,14 +1,8 @@
 "use client";
 
-import {
-	GithubOutlined,
-	MailOutlined,
-	MessageOutlined,
-	QqOutlined,
-} from "@ant-design/icons";
 import { getVersion } from "@tauri-apps/api/app";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { Badge, Button, Divider, Space, Tag, Typography, theme } from "antd";
+import { Badge, Divider, Tag, Typography, theme } from "antd";
 import { compare } from "compare-versions";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useIntl } from "react-intl";
@@ -148,48 +142,6 @@ export const AboutPage = () => {
 						</a>
 					</li>
 				</ul>
-			</div>
-
-			{/* 联系方式 */}
-			<div style={{ marginBottom: token.marginLG }}>
-				<Title level={3}>
-					{intl.formatMessage({ id: "about.contact.title" })}
-				</Title>
-				<Space direction="vertical" style={{ width: "100%" }}>
-					<Button
-						type="primary"
-						icon={<GithubOutlined />}
-						onClick={() =>
-							openUrl("https://github.com/mg-chao/snow-shot/issues")
-						}
-						block
-					>
-						{intl.formatMessage({ id: "about.contact.github" })}
-					</Button>
-					<Button
-						icon={<MessageOutlined />}
-						onClick={() =>
-							openUrl("https://space.bilibili.com/3546897042114689")
-						}
-						block
-					>
-						{intl.formatMessage({ id: "about.contact.bilibili" })}
-					</Button>
-					<Button
-						icon={<MailOutlined />}
-						onClick={() => openUrl("mailto:chao@mgchao.top")}
-						block
-					>
-						{intl.formatMessage({ id: "about.contact.email" })}
-					</Button>
-					<Button
-						icon={<QqOutlined />}
-						onClick={() => openUrl("https://qm.qq.com/q/w9B2gLdoYg")}
-						block
-					>
-						{intl.formatMessage({ id: "about.contact.qqGroup" })}
-					</Button>
-				</Space>
 			</div>
 		</div>
 	);

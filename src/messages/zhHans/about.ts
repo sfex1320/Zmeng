@@ -9,10 +9,5 @@ export const about = {
 	"about.license.nonCommercialType": "适用于 Apache v2.0 许可",
 	"about.license.commercial": "商用场景：",
 	"about.license.commercialType": "适用于 GPL v3 许可",
-	"about.contact.title": "📞 问题反馈与联系",
-	"about.contact.github": "GitHub Issue",
-	"about.contact.bilibili": "B站 3N0W",
-	"about.contact.email": "邮件: chao@mgchao.top",
-	"about.contact.qqGroup": "QQ 交流群: 974311403",
 	"about.newVersion": "新版本",
 };

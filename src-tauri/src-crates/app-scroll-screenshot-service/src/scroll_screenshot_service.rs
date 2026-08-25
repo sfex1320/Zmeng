@@ -922,6 +922,7 @@ impl ScrollScreenshotService {
                 snow_shot_app_utils::overlay_image(
                     &mut final_image,
                     total_width,
+                    total_height,
                     img,
                     0,
                     (offset_y - overlay_size) as usize,
@@ -934,6 +935,7 @@ impl ScrollScreenshotService {
                 snow_shot_app_utils::overlay_image(
                     &mut final_image,
                     total_width,
+                    total_height,
                     img,
                     (offset_x - overlay_size) as usize,
                     0,
@@ -961,6 +963,7 @@ impl ScrollScreenshotService {
                 snow_shot_app_utils::overlay_image(
                     &mut final_image,
                     total_width,
+                    total_height,
                     img,
                     0,
                     (offset_y - actual_height) as usize,
@@ -975,6 +978,7 @@ impl ScrollScreenshotService {
                 snow_shot_app_utils::overlay_image(
                     &mut final_image,
                     total_width,
+                    total_height,
                     img,
                     (offset_x - actual_width) as usize,
                     0,

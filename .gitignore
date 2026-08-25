@@ -60,3 +60,6 @@ excalidraw/
 
 # 构建日志
 *.log
+
+# ZCode session data
+.zcode/
