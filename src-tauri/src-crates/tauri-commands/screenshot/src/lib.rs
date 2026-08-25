@@ -18,10 +18,11 @@ pub async fn capture_current_monitor(
     encoder: String,
 ) -> Result<Response, String> {
     // 获取当前鼠标的位置
-    let (_, _, monitor) = snow_shot_app_utils::get_target_monitor()?;
+    let monitor = snow_shot_app_utils::get_target_monitor()?;
 
     let image_buffer = match snow_shot_app_utils::capture_target_monitor(
-        &monitor,
+        monitor.min_x,
+        monitor.min_y,
         None,
         Some(&window),
         ColorFormat::Rgb8,
@@ -179,16 +180,21 @@ where
 }
 
 #[cfg(target_os = "windows")]
-pub fn capture_window_hdr_image(window: &xcap::Window) -> Option<image::DynamicImage> {
+pub fn capture_window_hdr_image(hwnd: isize) -> Option<image::DynamicImage> {
     use snow_shot_app_utils::monitor_hdr_info::get_all_monitors_sdr_info;
-    use snow_shot_app_utils::monitor_info::MonitorInfo;
     use snow_shot_app_utils::windows_capture_image;
     use windows::Win32::Foundation::HWND;
+    use windows::Win32::Graphics::Gdi::{
+        GetMonitorInfoW, MonitorFromWindow, HMONITOR, MONITOR_DEFAULTTONEAREST, MONITORINFOEXW,
+    };
 
-    // 获取 Windows 所属的显示
-    let monitor = match window.current_monitor() {
-        Ok(monitor) => monitor,
-        Err(_) => return None,
+    // 窗口所属显示器（自研：MonitorFromWindow，不再依赖 xcap）
+    let hmonitor = unsafe {
+        let h = MonitorFromWindow(HWND(hwnd as _), MONITOR_DEFAULTTONEAREST);
+        if h.is_invalid() {
+            return None;
+        }
+        h
     };
 
     let hdr_infos = match get_all_monitors_sdr_info() {
@@ -202,22 +208,26 @@ pub fn capture_window_hdr_image(window: &xcap::Window) -> Option<image::DynamicI
         }
     };
 
-    let hdr_info = match hdr_infos.get(
-        MonitorInfo::get_device_name(&monitor)
-            .unwrap_or_default()
-            .as_str(),
-    ) {
-        Some(hdr_info) => hdr_info,
-        None => return None,
-    };
+    // 用 HMONITOR 反查显示器（ZmengMonitor 含同名 device_name）
+    let meta = zmeng_capture::list_monitors()
+        .ok()?
+        .into_iter()
+        .find(|m| m.hmonitor == hmonitor.0 as isize)?;
+
+    let hdr_info = hdr_infos.get(meta.device_name.as_str())?;
 
     if !hdr_info.hdr_enabled {
         return None;
     }
 
+    let monitor_info = snow_shot_app_utils::monitor_info::MonitorInfo::new(
+        &meta,
+        Some(hdr_info.clone()),
+    );
+
     return match windows_capture_image::capture_monitor_image(
-        &MonitorInfo::new(&monitor, Some(hdr_info.clone())),
-        Some(HWND(window.hwnd().unwrap())),
+        &monitor_info,
+        Some(HWND(hwnd as _)),
         None,
         ColorFormat::Rgba8,
     ) {
@@ -250,39 +260,36 @@ where
     #[cfg(target_os = "windows")]
     {
         let hwnd = snow_shot_app_os::utils::get_focused_window();
+        let hwnd_value = hwnd.0 as isize;
 
-        let focused_window = xcap::Window::new(xcap::ImplWindow::new(hwnd));
-
-        focused_window_app_name = focused_window.app_name().unwrap_or_default();
+        // ZMENG 自研：进程名 + PrintWindow(PW_RENDERFULLCONTENT) 客户区捕获，无 xcap
+        focused_window_app_name = zmeng_capture::window_app_name(hwnd_value);
 
         let hdr_image = if correct_hdr_color_algorithm != CorrectHdrColorAlgorithm::None {
-            capture_window_hdr_image(&focused_window)
+            capture_window_hdr_image(hwnd_value)
         } else {
             None
         };
 
         image = match hdr_image {
             Some(image) => image,
-            None => {
-                match focused_window.capture_image() {
-                    Ok(image) => DynamicImage::ImageRgba8(image),
-                    Err(_) => {
-                        log::warn!("[capture_focused_window] Failed to capture focused window");
-                        // 改成捕获当前显示器
-
-                        let (_, _, monitor) = snow_shot_app_utils::get_target_monitor()?;
-
-                        match monitor.capture_image() {
-                            Ok(image) => DynamicImage::ImageRgba8(image),
-                            Err(_) => {
-                                return Err(String::from(
-                                    "[capture_focused_window] Failed to capture image",
-                                ));
-                            }
-                        }
-                    }
+            None => match zmeng_capture::capture_window_by_hwnd(hwnd_value) {
+                Ok(rgba) => DynamicImage::ImageRgba8(rgba),
+                Err(e) => {
+                    log::warn!(
+                        "[capture_focused_window] Failed to capture focused window: {e}，回退当前显示器"
+                    );
+                    let monitor = snow_shot_app_utils::get_target_monitor()?;
+                    let (rgba, _) = zmeng_capture::capture_monitor_by_rect_blocking(
+                        monitor.min_x,
+                        monitor.min_y,
+                    )
+                    .map_err(|e2| {
+                        format!("[capture_focused_window] Failed to capture image: {e2}")
+                    })?;
+                    DynamicImage::ImageRgba8(rgba)
                 }
-            }
+            },
         };
     }
 

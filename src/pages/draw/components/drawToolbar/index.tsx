@@ -1068,9 +1068,9 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
                 .draw-toolbar {
                     padding: 5px;
                     box-sizing: border-box;
-                    background-color: ${token.colorBgContainer}D9;
-                    backdrop-filter: blur(18px) saturate(1.5);
-                    -webkit-backdrop-filter: blur(18px) saturate(1.5);
+                    background-color: ${token.colorBgContainer}B3;
+                    backdrop-filter: blur(24px) saturate(1.6);
+                    -webkit-backdrop-filter: blur(24px) saturate(1.6);
                     border: 1px solid ${token.colorBorderSecondary};
                     border-radius: 14px;
                     cursor: default; /* 防止非拖动区域也变成可拖动状态 */
@@ -1147,9 +1147,9 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 
                 /* 子工具弹层与主工具条同系列视觉 */
                 .draw-toolbar-container :global(.ant-popover) :global(.ant-popover-inner) {
-                    background-color: ${token.colorBgContainer}D9;
-                    backdrop-filter: blur(18px) saturate(1.5);
-                    -webkit-backdrop-filter: blur(18px) saturate(1.5);
+                    background-color: ${token.colorBgContainer}B3;
+                    backdrop-filter: blur(24px) saturate(1.6);
+                    -webkit-backdrop-filter: blur(24px) saturate(1.6);
                     border: 1px solid ${token.colorBorderSecondary};
                     border-radius: 12px;
                     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);

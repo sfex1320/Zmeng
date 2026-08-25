@@ -327,8 +327,7 @@ pub fn capture_monitor_image(
         DrawBorderSettings::Default
     };
 
-    let capture_monitor =
-        Monitor::from_raw_hmonitor(MonitorInfo::get_monitor_handle(&monitor.monitor).0);
+    let capture_monitor = Monitor::from_raw_hmonitor(monitor.hmonitor as _);
     let window = match window {
         Some(window) => Some(windows_capture::window::Window::from_raw_hwnd(window.0)),
         None => None,

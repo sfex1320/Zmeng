@@ -12,13 +12,15 @@ mod windows_impl;
 
 #[cfg(target_os = "windows")]
 pub use windows_impl::{
-    capture_monitor_by_rect, capture_monitor_by_rect_blocking, list_monitors, self_test,
+    capture_monitor_by_rect, capture_monitor_by_rect_blocking, capture_window_by_hwnd,
+    list_monitors, monitor_from_point, self_test, window_app_name,
     ZmengCaptureMethod, ZmengMonitor, ZmengSelfTestResult,
 };
 
 #[cfg(not(target_os = "windows"))]
 pub use stub::{
-    capture_monitor_by_rect, capture_monitor_by_rect_blocking, list_monitors, self_test,
+    capture_monitor_by_rect, capture_monitor_by_rect_blocking, capture_window_by_hwnd,
+    list_monitors, monitor_from_point, self_test, window_app_name,
     ZmengCaptureMethod, ZmengMonitor, ZmengSelfTestResult,
 };
 

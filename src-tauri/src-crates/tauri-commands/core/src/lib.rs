@@ -156,10 +156,10 @@ pub async fn create_fixed_content_window(
     hot_load_page_service: tauri::State<'_, Arc<HotLoadPageService>>,
     scroll_screenshot: bool,
 ) -> Result<(), String> {
-    let (_, _, monitor) = get_target_monitor()?;
+    let monitor = get_target_monitor()?;
 
-    let monitor_x = monitor.x().unwrap() as f64;
-    let monitor_y = monitor.y().unwrap() as f64;
+    let monitor_x = monitor.min_x as f64;
+    let monitor_y = monitor.min_y as f64;
 
     let window_x;
     let window_y;
@@ -170,7 +170,7 @@ pub async fn create_fixed_content_window(
     }
     #[cfg(not(target_os = "macos"))]
     {
-        let monitor_scale_factor = monitor.scale_factor().unwrap() as f64;
+        let monitor_scale_factor = monitor.scale_factor as f64;
         window_x = monitor_x / monitor_scale_factor;
         window_y = monitor_y / monitor_scale_factor;
     }
@@ -266,12 +266,12 @@ pub async fn create_full_screen_draw_window(
         return Ok(());
     }
 
-    let (_, _, monitor) = get_target_monitor()?;
+    let monitor = get_target_monitor()?;
 
-    let monitor_x = monitor.x().unwrap() as f64;
-    let monitor_y = monitor.y().unwrap() as f64;
-    let monitor_width = monitor.width().unwrap() as f64;
-    let monitor_height = monitor.height().unwrap() as f64;
+    let monitor_x = monitor.min_x as f64;
+    let monitor_y = monitor.min_y as f64;
+    let monitor_width = (monitor.max_x - monitor.min_x) as f64;
+    let monitor_height = (monitor.max_y - monitor.min_y) as f64;
 
     // 先从服务中获取两个窗口（必须串行以避免竞态条件）
     let main_window_opt = hot_load_page_service.pop_page().await;
@@ -460,25 +460,26 @@ pub struct MonitorInfo {
 }
 
 pub async fn get_current_monitor_info() -> Result<MonitorInfo, String> {
+    let monitor = get_target_monitor()?;
     #[cfg(target_os = "macos")]
-    let (mut mouse_x, mut mouse_y, monitor) = get_target_monitor()?;
+    let (mut mouse_x, mut mouse_y) = (monitor.mouse_x, monitor.mouse_y);
     #[cfg(not(target_os = "macos"))]
-    let (mouse_x, mouse_y, monitor) = get_target_monitor()?;
+    let (mouse_x, mouse_y) = (monitor.mouse_x, monitor.mouse_y);
 
-    let monitor_x = monitor.x().unwrap();
-    let monitor_y = monitor.y().unwrap();
-
-    #[cfg(target_os = "macos")]
-    let mut monitor_width = monitor.width().unwrap();
-    #[cfg(not(target_os = "macos"))]
-    let monitor_width = monitor.width().unwrap();
+    let monitor_x = monitor.min_x;
+    let monitor_y = monitor.min_y;
 
     #[cfg(target_os = "macos")]
-    let mut monitor_height = monitor.height().unwrap();
+    let mut monitor_width = monitor.max_x - monitor.min_x;
     #[cfg(not(target_os = "macos"))]
-    let monitor_height = monitor.height().unwrap();
+    let monitor_width = monitor.max_x - monitor.min_x;
 
-    let monitor_scale_factor = monitor.scale_factor().unwrap();
+    #[cfg(target_os = "macos")]
+    let mut monitor_height = monitor.max_y - monitor.min_y;
+    #[cfg(not(target_os = "macos"))]
+    let monitor_height = monitor.max_y - monitor.min_y;
+
+    let monitor_scale_factor = monitor.scale_factor;
 
     // macOS 下，屏幕宽高是逻辑像素，这里统一转换为物理像素
     #[cfg(target_os = "macos")]
@@ -495,8 +496,8 @@ pub async fn get_current_monitor_info() -> Result<MonitorInfo, String> {
         mouse_y: mouse_y - monitor_y,
         monitor_x: monitor_x,
         monitor_y: monitor_y,
-        monitor_width: monitor_width,
-        monitor_height: monitor_height,
+        monitor_width: monitor_width as u32,
+        monitor_height: monitor_height as u32,
         monitor_scale_factor: monitor_scale_factor,
     };
     Ok(monitor_info)

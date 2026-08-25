@@ -55,6 +55,19 @@ export const SubTools: React.FC<{
 		useMemo(() => {
 			return {
 				getBaseOffset: (element) => {
+					// 优先跟随主工具条的实际渲染位置（getBoundingClientRect 为视口 CSS 坐标，
+					// 多屏/混合缩放下天然正确）。旧实现按选区坐标 + devicePixelRatio 换算，
+					// 在多屏下会把子工具条定位到另一块屏幕。
+					const mainToolbar = document.querySelector(".draw-toolbar");
+					if (mainToolbar) {
+						const rect = mainToolbar.getBoundingClientRect();
+						return {
+							x: rect.left,
+							y: rect.bottom + 8,
+						};
+					}
+
+					// 主工具条不可见时回退旧逻辑（选区左上方）
 					const selectedRect = getSelectedRect();
 
 					return {
@@ -169,18 +182,49 @@ export const SubTools: React.FC<{
                     left: 0;
                 }
 
+                /* 与主工具条同系列：毛玻璃胶囊 + 系列化按钮 */
                 .sub-tools {
                     opacity: 0;
                     pointer-events: auto;
-                    padding: ${token.paddingSM}px ${token.paddingXXS}px;
+                    padding: 5px;
                     box-sizing: border-box;
-                    background-color: ${token.colorBgContainer};
-                    border-radius: ${token.borderRadiusLG}px;
+                    background-color: ${token.colorBgContainer}B3;
+                    backdrop-filter: blur(24px) saturate(1.5);
+                    -webkit-backdrop-filter: blur(24px) saturate(1.5);
+                    border: 1px solid ${token.colorBorderSecondary};
+                    border-radius: 14px;
                     cursor: default; /* 防止非拖动区域也变成可拖动状态 */
                     color: ${token.colorText};
-                    box-shadow: 0 0 3px 0px ${token.colorPrimaryHover};
+                    box-shadow:
+                        0 10px 30px rgba(0, 0, 0, 0.18),
+                        0 2px 8px rgba(0, 0, 0, 0.1),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.06);
                     transition: opacity ${token.motionDurationMid} ${token.motionEaseInOut};
                     transform-origin: top left;
+                }
+
+                .sub-tools :global(.ant-btn) {
+                    min-width: 32px;
+                    width: 32px;
+                    height: 32px;
+                    padding: 0;
+                    border-radius: 9px;
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    transition:
+                        background-color 0.15s ease,
+                        color 0.15s ease,
+                        transform 0.15s ease,
+                        box-shadow 0.15s ease;
+                }
+
+                .sub-tools :global(.ant-btn):not(:disabled):hover {
+                    transform: translateY(-1px);
+                }
+
+                .sub-tools :global(.ant-btn):global(.ant-btn-primary) {
+                    box-shadow: 0 2px 8px ${token.colorPrimary}66;
                 }
 
                 .drag-button {
@@ -190,7 +234,7 @@ export const SubTools: React.FC<{
                 }
 
                 .sub-tools :global(.ant-btn) :global(.ant-btn-icon) {
-                    font-size: 24px;
+                    font-size: 19px;
                     display: flex;
                     align-items: center;
                     justify-content: center;

@@ -13,6 +13,7 @@ use image::codecs::webp::WebPEncoder;
 use image::{DynamicImage, GenericImageView};
 use snow_shot_app_shared::ElementRect;
 use tauri::AppHandle;
+#[cfg(target_os = "macos")]
 use xcap::Monitor;
 use zune_core::bit_depth::BitDepth;
 use zune_core::colorspace::ColorSpace;
@@ -46,33 +47,87 @@ pub fn get_device_mouse_position() -> Result<(i32, i32), String> {
     Ok(mouse.coords)
 }
 
-pub fn get_target_monitor() -> Result<(i32, i32, Monitor), String> {
-    let (mut mouse_x, mut mouse_y) = match get_device_mouse_position() {
-        Ok((x, y)) => (x, y),
-        Err(e) => {
-            return Err(format!(
-                "[get_target_monitor] Failed to get device mouse position: {}",
-                e
-            ));
-        }
-    };
-    let monitor = Monitor::from_point(mouse_x, mouse_y).unwrap_or_else(|_| {
-        // 在 Wayland 中，获取不到鼠标位置，选用第一个显示器作为位置
+/// 目标显示器信息（鼠标所在屏；矩形为虚拟桌面物理像素坐标）
+#[derive(Debug, Clone, Copy)]
+pub struct TargetMonitorInfo {
+    pub mouse_x: i32,
+    pub mouse_y: i32,
+    pub min_x: i32,
+    pub min_y: i32,
+    pub max_x: i32,
+    pub max_y: i32,
+    pub scale_factor: f32,
+}
 
-        log::warn!("[get_target_monitor] No monitor found, using first monitor");
+pub fn get_target_monitor() -> Result<TargetMonitorInfo, String> {
+    // Windows：自研 zmeng-capture 的 DXGI 枚举定位（无 xcap）
+    #[cfg(target_os = "windows")]
+    {
+        let (mouse_x, mouse_y) = match get_device_mouse_position() {
+            Ok((x, y)) => (x, y),
+            Err(e) => {
+                return Err(format!(
+                    "[get_target_monitor] Failed to get device mouse position: {}",
+                    e
+                ));
+            }
+        };
 
-        let monitor_list = xcap::Monitor::all().expect("[get_target_monitor] No monitor found");
-        let first_monitor = monitor_list
-            .first()
-            .expect("[get_target_monitor] No monitor found");
+        let monitor = zmeng_capture::monitor_from_point(mouse_x, mouse_y)
+            .or_else(|| {
+                // 鼠标不在任何屏上（罕见）：回退第一块
+                zmeng_capture::list_monitors()
+                    .ok()
+                    .and_then(|list| list.first().cloned())
+            })
+            .ok_or_else(|| "[get_target_monitor] No monitor found".to_string())?;
 
-        mouse_x = first_monitor.x().unwrap_or(0) + first_monitor.width().unwrap_or(0) as i32 / 2;
-        mouse_y = first_monitor.y().unwrap_or(0) + first_monitor.height().unwrap_or(0) as i32 / 2;
+        Ok(TargetMonitorInfo {
+            mouse_x,
+            mouse_y,
+            min_x: monitor.min_x,
+            min_y: monitor.min_y,
+            max_x: monitor.max_x,
+            max_y: monitor.max_y,
+            scale_factor: monitor.scale_factor,
+        })
+    }
 
-        first_monitor.clone()
-    });
+    // macOS：仍用 xcap
+    #[cfg(target_os = "macos")]
+    {
+        let (mut mouse_x, mut mouse_y) = match get_device_mouse_position() {
+            Ok((x, y)) => (x, y),
+            Err(e) => {
+                return Err(format!(
+                    "[get_target_monitor] Failed to get device mouse position: {}",
+                    e
+                ));
+            }
+        };
+        let monitor = Monitor::from_point(mouse_x, mouse_y).unwrap_or_else(|_| {
+            log::warn!("[get_target_monitor] No monitor found, using first monitor");
+            let monitor_list = xcap::Monitor::all().expect("[get_target_monitor] No monitor found");
+            let first_monitor = monitor_list
+                .first()
+                .expect("[get_target_monitor] No monitor found");
 
-    Ok((mouse_x, mouse_y, monitor))
+            mouse_x = first_monitor.x().unwrap_or(0) + first_monitor.width().unwrap_or(0) as i32 / 2;
+            mouse_y = first_monitor.y().unwrap_or(0) + first_monitor.height().unwrap_or(0) as i32 / 2;
+
+            first_monitor.clone()
+        });
+
+        Ok(TargetMonitorInfo {
+            mouse_x,
+            mouse_y,
+            min_x: monitor.x().unwrap_or(0),
+            min_y: monitor.y().unwrap_or(0),
+            max_x: monitor.x().unwrap_or(0) + monitor.width().unwrap_or(0) as i32,
+            max_y: monitor.y().unwrap_or(0) + monitor.height().unwrap_or(0) as i32,
+            scale_factor: monitor.scale_factor().unwrap_or(1.0) as f32,
+        })
+    }
 }
 
 pub async fn save_image_to_file(
@@ -278,8 +333,10 @@ pub fn check_monitor_scale_factors_consistent() -> (bool, Vec<f32>) {
     (all_same_scale, scale_factors)
 }
 
+/// Windows：基于 zmeng-capture 的显示器采集（按显示器全局坐标定位）
 pub fn capture_target_monitor(
-    monitor: &Monitor,
+    monitor_x: i32,
+    monitor_y: i32,
     crop_area: Option<ElementRect>,
     #[allow(unused_variables)] exclude_window: Option<&tauri::Window>,
     #[allow(unused_variables)] color_format: ColorFormat,
@@ -289,11 +346,6 @@ pub fn capture_target_monitor(
     // xcap 的 Monitor 此处仅用于读取显示器全局坐标（元数据）。
     #[cfg(target_os = "windows")]
     {
-        let (monitor_x, monitor_y) = (
-            monitor.x().unwrap_or(0),
-            monitor.y().unwrap_or(0),
-        );
-
         let (rgba, method) =
             match zmeng_capture::capture_monitor_by_rect_blocking(monitor_x, monitor_y) {
                 Ok(result) => result,
@@ -342,9 +394,21 @@ pub fn capture_target_monitor(
         });
     }
 
-    #[cfg(target_os = "macos")]
+    #[allow(unreachable_code)]
     {
-        if !scap::has_permission() {
+        None
+    }
+}
+
+/// macOS：仍基于 xcap/scap 的显示器采集
+#[cfg(target_os = "macos")]
+pub fn capture_target_monitor_macos(
+    monitor: &Monitor,
+    crop_area: Option<ElementRect>,
+    exclude_window: Option<&tauri::Window>,
+    color_format: ColorFormat,
+) -> Option<image::DynamicImage> {
+    if !scap::has_permission() {
             log::warn!("[capture_current_monitor_with_scap] failed tohas_permission");
             if !scap::request_permission() {
                 log::warn!("[capture_current_monitor_with_scap] failed to request_permission");
@@ -487,7 +551,6 @@ pub fn capture_target_monitor(
                 }
             }
         }
-    }
 }
 
 #[cfg(target_os = "macos")]

@@ -4,6 +4,7 @@ use rayon::iter::{
 };
 use serde::{Deserialize, Serialize};
 use snow_shot_app_shared::ElementRect;
+#[cfg(target_os = "macos")]
 use xcap::Monitor;
 
 #[cfg(target_os = "windows")]
@@ -13,6 +14,11 @@ use windows::Win32::Graphics::Gdi::HMONITOR;
 
 #[derive(Debug)]
 pub struct MonitorInfo {
+    /// Windows：HMONITOR 句柄（来自自研 zmeng-capture 的 DXGI 枚举）
+    #[cfg(target_os = "windows")]
+    pub hmonitor: isize,
+    /// macOS：xcap 显示器引用（macOS 采集仍基于 xcap）
+    #[cfg(target_os = "macos")]
     pub monitor: Monitor,
     pub rect: ElementRect,
     pub scale_factor: f32,
@@ -42,52 +48,42 @@ pub struct CaptureOption {
 }
 
 impl MonitorInfo {
+    /// Windows：基于自研 zmeng-capture 的 DXGI 显示器元数据构造（HMONITOR/矩形/DPI）
+    #[cfg(target_os = "windows")]
     pub fn new(
-        monitor: &Monitor,
-        #[cfg(target_os = "windows")] monitor_hdr_info: Option<MonitorHdrInfo>,
+        meta: &zmeng_capture::ZmengMonitor,
+        monitor_hdr_info: Option<MonitorHdrInfo>,
     ) -> Self {
-        let monitor_rect: ElementRect;
-        let scale_factor: f32;
-
-        #[cfg(target_os = "windows")]
-        {
-            let rect = monitor.get_dev_mode_w().unwrap();
-            monitor_rect = ElementRect {
-                min_x: unsafe { rect.Anonymous1.Anonymous2.dmPosition.x },
-                min_y: unsafe { rect.Anonymous1.Anonymous2.dmPosition.y },
-                max_x: unsafe { rect.Anonymous1.Anonymous2.dmPosition.x + rect.dmPelsWidth as i32 },
-                max_y: unsafe {
-                    rect.Anonymous1.Anonymous2.dmPosition.y + rect.dmPelsHeight as i32
-                },
-            };
-            scale_factor = monitor.scale_factor().unwrap_or(0.0);
-
-            MonitorInfo {
-                monitor: monitor.clone(),
-                rect: monitor_rect,
-                scale_factor,
-                monitor_hdr_info: monitor_hdr_info.unwrap_or(MonitorHdrInfo::default()),
-            }
+        MonitorInfo {
+            hmonitor: meta.hmonitor,
+            rect: ElementRect {
+                min_x: meta.min_x,
+                min_y: meta.min_y,
+                max_x: meta.max_x,
+                max_y: meta.max_y,
+            },
+            scale_factor: meta.scale_factor,
+            monitor_hdr_info: monitor_hdr_info.unwrap_or(MonitorHdrInfo::default()),
         }
+    }
 
-        #[cfg(target_os = "macos")]
-        {
-            let rect = monitor.bounds().unwrap();
-            let monitor_scale_factor = monitor.scale_factor().unwrap_or(1.0) as f64;
-            monitor_rect = ElementRect {
-                min_x: (rect.origin.x * monitor_scale_factor) as i32,
-                min_y: (rect.origin.y * monitor_scale_factor) as i32,
-                max_x: ((rect.origin.x + rect.size.width) * monitor_scale_factor) as i32,
-                max_y: ((rect.origin.y + rect.size.height) * monitor_scale_factor) as i32,
-            };
-            scale_factor = 0.0;
+    /// macOS：仍基于 xcap
+    #[cfg(target_os = "macos")]
+    pub fn new(monitor: &Monitor) -> Self {
+        let rect = monitor.bounds().unwrap();
+        let monitor_scale_factor = monitor.scale_factor().unwrap_or(1.0) as f64;
+        let rect_scaled = ElementRect {
+            min_x: (rect.origin.x * monitor_scale_factor) as i32,
+            min_y: (rect.origin.y * monitor_scale_factor) as i32,
+            max_x: ((rect.origin.x + rect.size.width) * monitor_scale_factor) as i32,
+            max_y: ((rect.origin.y + rect.size.height) * monitor_scale_factor) as i32,
+        };
 
-            MonitorInfo {
-                monitor: monitor.clone(),
-                rect: monitor_rect,
-                scale_factor,
-                monitor_scale_factor,
-            }
+        MonitorInfo {
+            monitor: monitor.clone(),
+            rect: rect_scaled,
+            scale_factor: 0.0,
+            monitor_scale_factor,
         }
     }
 
@@ -108,15 +104,13 @@ impl MonitorInfo {
     }
 
     #[cfg(target_os = "windows")]
-    pub fn get_monitor_handle(monitor: &Monitor) -> HMONITOR {
-        use std::ffi::c_void;
-
-        HMONITOR(monitor.id().unwrap() as *mut c_void)
+    pub fn get_monitor_handle(&self) -> HMONITOR {
+        HMONITOR(self.hmonitor as *mut core::ffi::c_void)
     }
 
     /// 获取显示器设备名称
     #[cfg(target_os = "windows")]
-    pub fn get_device_name(monitor: &Monitor) -> Result<String, String> {
+    pub fn get_device_name(&self) -> Result<String, String> {
         use widestring::U16CString;
         use windows::Win32::{
             Foundation::RECT,
@@ -135,7 +129,7 @@ impl MonitorInfo {
 
         let result = unsafe {
             GetMonitorInfoW(
-                Self::get_monitor_handle(monitor),
+                self.get_monitor_handle(),
                 std::ptr::addr_of_mut!(monitor_info).cast(),
             )
         };
@@ -168,7 +162,7 @@ impl MonitorInfo {
     ) -> Option<image::DynamicImage> {
         #[cfg(target_os = "macos")]
         {
-            return super::capture_target_monitor(
+            return super::capture_target_monitor_macos(
                 &self.monitor,
                 crop_area,
                 exclude_window,
@@ -204,7 +198,8 @@ impl MonitorInfo {
             return match capture_hdr_image {
                 Some(image) => Some(image),
                 None => super::capture_target_monitor(
-                    &self.monitor,
+                    self.rect.min_x,
+                    self.rect.min_y,
                     crop_area,
                     exclude_window,
                     capture_option.color_format,
@@ -228,6 +223,11 @@ impl MonitorList {
         region: Option<ElementRect>,
         #[allow(unused_variables)] ignore_sdr_info: bool,
     ) -> MonitorList {
+        // Windows：自研 zmeng-capture 的 DXGI 枚举（含 HMONITOR/DPI）；
+        // macOS：仍用 xcap
+        #[cfg(target_os = "windows")]
+        let monitors = zmeng_capture::list_monitors().unwrap_or_default();
+        #[cfg(target_os = "macos")]
         let monitors = Monitor::all().unwrap_or_default();
 
         let region = match region {
@@ -266,11 +266,7 @@ impl MonitorList {
                         match &monitor_hdr_info_map {
                             Some(monitor_hdr_info_map) => Some(
                                 monitor_hdr_info_map
-                                    .get(
-                                        MonitorInfo::get_device_name(monitor)
-                                            .unwrap_or_default()
-                                            .as_str(),
-                                    )
+                                    .get(monitor.device_name.as_str())
                                     .unwrap_or(&MonitorHdrInfo::default())
                                     .clone(),
                             ),

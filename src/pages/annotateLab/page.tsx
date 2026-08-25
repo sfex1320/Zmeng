@@ -1,7 +1,13 @@
-import { DownloadOutlined } from "@ant-design/icons";
-import { Button, ColorPicker, Flex, Segmented, Slider, Space, theme } from "antd";
-import React, { useCallback, useRef, useState } from "react";
+import { CameraOutlined, DownloadOutlined } from "@ant-design/icons";
+import { Button, ColorPicker, Flex, message, Segmented, Slider, Space, theme } from "antd";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import {
+	onSomethingUpdate,
+	readImageBase64,
+} from "tauri-plugin-clipboard-api";
 import { ContentWrap } from "@/components/contentWrap";
+import { executeScreenshot } from "@/functions/screenshot";
+import { ScreenshotType } from "@/utils/types";
 import {
 	ZmengAnnotateCanvas,
 	type ZmengAnnotateHandle,
@@ -97,7 +103,44 @@ export const AnnotateLabPage: React.FC = () => {
 		strokeWidth: 3,
 	});
 	const [history, setHistory] = useState({ undo: false, redo: false });
-	const [background] = useState(makeTestBackground);
+	const [background, setBackground] = useState<HTMLCanvasElement | null>(
+		() => makeTestBackground(),
+	);
+	// 截图导入模式：触发截图后监听剪贴板图像作为底图（截图-标注闭环验证）
+	const importingRef = useRef(false);
+
+	useEffect(() => {
+		const un = onSomethingUpdate(async (types) => {
+			if (!importingRef.current || !types.image) return;
+			importingRef.current = false;
+			try {
+				const b64 = await readImageBase64();
+				if (!b64) return;
+				const img = new Image();
+				img.onload = () => {
+					const canvas = document.createElement("canvas");
+					canvas.width = img.naturalWidth;
+					canvas.height = img.naturalHeight;
+					canvas.getContext("2d")?.drawImage(img, 0, 0);
+					setBackground(canvas);
+					annotateRef.current?.clear();
+					message.success("已导入截图，开始标注");
+				};
+				img.src = `data:image/png;base64,${b64}`;
+			} catch {
+				message.error("读取截图失败");
+			}
+		});
+		return () => {
+			un.then((f) => f());
+		};
+	}, []);
+
+	const importFromScreenshot = useCallback(() => {
+		importingRef.current = true;
+		message.info("请在屏幕上框选要标注的区域");
+		executeScreenshot(ScreenshotType.Copy);
+	}, []);
 
 	const updateStyle = useCallback((patch: Partial<ZmengStyle>) => {
 		setStyle((prev) => ({ ...prev, ...patch }));
@@ -169,9 +212,14 @@ export const AnnotateLabPage: React.FC = () => {
 							onChange={(v) => updateStyle({ strokeWidth: v })}
 						/>
 					</Space>
-					<Button type="primary" icon={<DownloadOutlined />} onClick={exportPng}>
-						导出 PNG
-					</Button>
+					<Space size={6}>
+						<Button icon={<CameraOutlined />} onClick={importFromScreenshot}>
+							从截图导入
+						</Button>
+						<Button type="primary" icon={<DownloadOutlined />} onClick={exportPng}>
+							导出 PNG
+						</Button>
+					</Space>
 				</Flex>
 
 				<div

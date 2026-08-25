@@ -21,12 +21,16 @@ use windows::Win32::Graphics::Gdi::{
 /// 一台已接入桌面的显示器（虚拟桌面物理像素坐标，副屏可为负）
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct ZmengMonitor {
-    /// DXGI 设备名（\\.\DISPLAY1 之类），用于稳定标识
+    /// DXGI 设备名（与 GetMonitorInfoW 的 szDevice 同格式，如 \\.\DISPLAY1）
     pub device_name: String,
     pub min_x: i32,
     pub min_y: i32,
     pub max_x: i32,
     pub max_y: i32,
+    /// 显示器 HMONITOR 句柄（HDR 采集/显示器信息查询用）
+    pub hmonitor: isize,
+    /// 缩放系数（有效 DPI / 96，如 150% => 1.5）
+    pub scale_factor: f32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
@@ -54,16 +58,203 @@ pub fn list_monitors() -> Result<Vec<ZmengMonitor>, String> {
         .map(|outputs| {
             outputs
                 .into_iter()
-                .map(|(desc, _)| ZmengMonitor {
-                    device_name: device_name_string(&desc),
-                    min_x: desc.DesktopCoordinates.left,
-                    min_y: desc.DesktopCoordinates.top,
-                    max_x: desc.DesktopCoordinates.right,
-                    max_y: desc.DesktopCoordinates.bottom,
+                .map(|(desc, _)| {
+                    let hmonitor = desc.Monitor.0 as isize;
+                    ZmengMonitor {
+                        device_name: device_name_string(&desc),
+                        min_x: desc.DesktopCoordinates.left,
+                        min_y: desc.DesktopCoordinates.top,
+                        max_x: desc.DesktopCoordinates.right,
+                        max_y: desc.DesktopCoordinates.bottom,
+                        hmonitor,
+                        scale_factor: monitor_scale_factor(hmonitor),
+                    }
                 })
                 .collect()
         })
         .map_err(|e| format!("[zmeng-capture] 枚举显示器失败: {e}"))
+}
+
+/// 显示器有效 DPI 缩放系数（失败按 100% 处理）
+fn monitor_scale_factor(hmonitor: isize) -> f32 {
+    use windows::Win32::UI::HiDpi::{GetDpiForMonitor, MDT_EFFECTIVE_DPI};
+    unsafe {
+        let mut dpi_x = 0u32;
+        let mut dpi_y = 0u32;
+        let h = windows::Win32::Graphics::Gdi::HMONITOR(hmonitor as _);
+        if GetDpiForMonitor(h, MDT_EFFECTIVE_DPI, &mut dpi_x, &mut dpi_y).is_ok() {
+            dpi_x as f32 / 96.0
+        } else {
+            1.0
+        }
+    }
+}
+
+/// 获取窗口所属进程名（exe 文件名，不含路径），截图文件名占位符用
+pub fn window_app_name(hwnd: isize) -> String {
+    use windows::Win32::System::Threading::{
+        OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_WIN32,
+        PROCESS_QUERY_LIMITED_INFORMATION,
+    };
+    use windows::Win32::UI::WindowsAndMessaging::GetWindowThreadProcessId;
+
+    unsafe {
+        let mut pid = 0u32;
+        GetWindowThreadProcessId(
+            windows::Win32::Foundation::HWND(hwnd as _),
+            Some(&mut pid),
+        );
+        if pid == 0 {
+            return String::new();
+        }
+        let handle = match OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid) {
+            Ok(h) => h,
+            Err(_) => return String::new(),
+        };
+        let mut buffer = [0u16; 512];
+        let mut len = buffer.len() as u32;
+        let ok = QueryFullProcessImageNameW(
+            handle,
+            PROCESS_NAME_WIN32,
+            windows::core::PWSTR(buffer.as_mut_ptr()),
+            &mut len,
+        )
+        .is_ok();
+        let _ = windows::Win32::Foundation::CloseHandle(handle);
+        if !ok || len == 0 {
+            return String::new();
+        }
+        let path = String::from_utf16_lossy(&buffer[..len as usize]);
+        path.rsplit('\\').next().unwrap_or("").trim_end_matches(".exe").to_string()
+    }
+}
+
+/// 找到覆盖指定虚拟桌面坐标点的显示器
+pub fn monitor_from_point(x: i32, y: i32) -> Option<ZmengMonitor> {
+    list_monitors()
+        .ok()?
+        .into_iter()
+        .find(|m| x >= m.min_x && x < m.max_x && y >= m.min_y && y < m.max_y)
+}
+
+/// 抓取指定窗口的客户区画面（RGBA）。
+/// 主路径 PrintWindow(PW_RENDERFULLCONTENT)（DWM/浏览器内容可捕获），
+/// 失败回退窗口 DC BitBlt。
+pub fn capture_window_by_hwnd(hwnd: isize) -> Result<image::RgbaImage, String> {
+    use windows::Win32::Foundation::{HWND, POINT, RECT};
+    use windows::Win32::Graphics::Gdi::{
+        ClientToScreen, GetWindowDC,
+    };
+    use windows::Win32::Storage::Xps::{PrintWindow, PRINT_WINDOW_FLAGS};
+    use windows::Win32::UI::WindowsAndMessaging::{
+        GetClientRect, PW_RENDERFULLCONTENT,
+    };
+
+    unsafe {
+        let hwnd = HWND(hwnd as _);
+        let mut client_rect = RECT::default();
+        if GetClientRect(hwnd, &mut client_rect).is_err() {
+            return Err("GetClientRect 失败".to_string());
+        }
+        let width = (client_rect.right - client_rect.left).max(0);
+        let height = (client_rect.bottom - client_rect.top).max(0);
+        if width == 0 || height == 0 {
+            return Err("窗口客户区为空".to_string());
+        }
+
+        let mut point = POINT { x: 0, y: 0 };
+        let _ = ClientToScreen(hwnd, &mut point);
+
+        let screen_dc = GetDC(None);
+        let mem_dc = CreateCompatibleDC(Some(screen_dc));
+        let bitmap = CreateCompatibleBitmap(screen_dc, width, height);
+        let old = SelectObject(mem_dc, bitmap.into());
+
+        let print_ok = PrintWindow(
+            hwnd,
+            mem_dc,
+            PRINT_WINDOW_FLAGS(PW_RENDERFULLCONTENT),
+        )
+        .as_bool();
+        let result = if print_ok {
+            read_dib(mem_dc, bitmap, width, height)
+        } else {
+            Err("PrintWindow 失败".to_string())
+        };
+
+        let final_result = match result {
+            Ok(image) => Ok(image),
+            Err(e) => {
+                log::warn!("[zmeng-capture] PrintWindow 失败({e})，回退窗口 BitBlt");
+                let window_dc = GetWindowDC(Some(hwnd));
+                let blt = BitBlt(
+                    mem_dc,
+                    0,
+                    0,
+                    width,
+                    height,
+                    Some(window_dc),
+                    point.x,
+                    point.y,
+                    SRCCOPY | CAPTUREBLT,
+                );
+                if blt.is_err() {
+                    Err(format!("窗口 BitBlt 失败: {}", blt.unwrap_err()))
+                } else {
+                    read_dib(mem_dc, bitmap, width, height)
+                }
+            }
+        };
+
+        SelectObject(mem_dc, old);
+        let _ = DeleteObject(bitmap.into());
+        let _ = DeleteDC(mem_dc);
+        ReleaseDC(None, screen_dc);
+        final_result
+    }
+}
+
+/// 从 HBITMAP 读取 32bpp 自上而下像素并转 RGBA
+unsafe fn read_dib(
+    mem_dc: windows::Win32::Graphics::Gdi::HDC,
+    bitmap: windows::Win32::Graphics::Gdi::HBITMAP,
+    width: i32,
+    height: i32,
+) -> Result<image::RgbaImage, String> {
+    let mut info = BITMAPINFO {
+        bmiHeader: BITMAPINFOHEADER {
+            biSize: std::mem::size_of::<BITMAPINFOHEADER>() as u32,
+            biWidth: width,
+            biHeight: -height,
+            biPlanes: 1,
+            biBitCount: 32,
+            biCompression: BI_RGB.0,
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    let mut buffer = vec![0u8; (width * height * 4) as usize];
+    let copied = GetDIBits(
+        mem_dc,
+        bitmap,
+        0,
+        height as u32,
+        Some(buffer.as_mut_ptr().cast()),
+        &mut info,
+        DIB_RGB_COLORS,
+    );
+    if copied == 0 {
+        return Err("GetDIBits 返回 0".to_string());
+    }
+    let mut rgba = image::RgbaImage::new(width as u32, height as u32);
+    let dst = rgba.as_mut();
+    for i in 0..(width as usize * height as usize) {
+        dst[i * 4] = buffer[i * 4 + 2];
+        dst[i * 4 + 1] = buffer[i * 4 + 1];
+        dst[i * 4 + 2] = buffer[i * 4];
+        dst[i * 4 + 3] = 255;
+    }
+    Ok(rgba)
 }
 
 /// 抓取覆盖指定点的显示器整屏画面，返回 RGBA 图像 + 实际使用的采集方式（同步核心）。
