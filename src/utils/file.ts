@@ -87,6 +87,12 @@ export const getImageSaveDirectory = async (appSettings: AppSettingsData) => {
 			savePath = await joinPath(await pictureDir(), "ZMENG");
 		}
 	}
+	// 按当天日期子文件夹存放（YYYY-MM-DD），避免一个目录堆满所有文件
+	try {
+		savePath = await joinPath(savePath, dayjs().format("YYYY-MM-DD"));
+	} catch {
+		// joinPath 失败时维持原目录
+	}
 
 	return savePath;
 };
@@ -233,6 +239,12 @@ export const getVideoRecordSaveDirectory = async (
 		if (!savePath) {
 			savePath = await joinPath(await videoDir(), "ZMENG");
 		}
+	}
+	// 与截图一致：按当天日期子文件夹存放
+	try {
+		savePath = await joinPath(savePath, dayjs().format("YYYY-MM-DD"));
+	} catch {
+		// joinPath 失败时维持原目录
 	}
 
 	return savePath;

@@ -1,4 +1,4 @@
-use snow_shot_app_services::hot_load_page_service::HotLoadPageService;
+use zmeng_app_services::hot_load_page_service::HotLoadPageService;
 use std::sync::Arc;
 use tauri::{AppHandle, command};
 

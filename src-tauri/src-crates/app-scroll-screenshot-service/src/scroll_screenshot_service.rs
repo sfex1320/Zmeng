@@ -919,7 +919,7 @@ impl ScrollScreenshotService {
 
             if self.current_direction == ScrollDirection::Vertical {
                 // 垂直拼接
-                snow_shot_app_utils::overlay_image(
+                zmeng_app_utils::overlay_image(
                     &mut final_image,
                     total_width,
                     total_height,
@@ -932,7 +932,7 @@ impl ScrollScreenshotService {
                 offset_y += (img.height() as i32 - overlay_size) as i32;
             } else {
                 // 水平拼接
-                snow_shot_app_utils::overlay_image(
+                zmeng_app_utils::overlay_image(
                     &mut final_image,
                     total_width,
                     total_height,
@@ -960,7 +960,7 @@ impl ScrollScreenshotService {
                 // 垂直拼接
                 let actual_height = img.height() as i32 + overlay_size;
 
-                snow_shot_app_utils::overlay_image(
+                zmeng_app_utils::overlay_image(
                     &mut final_image,
                     total_width,
                     total_height,
@@ -975,7 +975,7 @@ impl ScrollScreenshotService {
                 let actual_width = img.width() as i32 + overlay_size;
 
                 // 水平拼接
-                snow_shot_app_utils::overlay_image(
+                zmeng_app_utils::overlay_image(
                     &mut final_image,
                     total_width,
                     total_height,

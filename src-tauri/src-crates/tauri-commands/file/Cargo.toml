@@ -1,5 +1,5 @@
 [package]
-name = "snow-shot-tauri-commands-file"
+name = "zmeng-tauri-commands-file"
 version = "0.1.0"
 edition = "2024"
 

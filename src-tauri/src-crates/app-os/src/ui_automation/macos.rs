@@ -1,4 +1,4 @@
-use snow_shot_app_shared::ElementRect;
+use zmeng_app_shared::ElementRect;
 
 pub struct UIElements {}
 

@@ -6723,298 +6723,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "51d44cfb396c3caf6fbfd0ab422af02631b69ddd96d2eff0b0f0724f9024051b"
 
 [[package]]
-name = "snow-shot"
-version = "0.7.9-beta"
-dependencies = [
- "base64 0.22.1",
- "log",
- "reqwest",
- "serde",
- "serde_json",
- "snow-shot-app-os",
- "snow-shot-app-scroll-screenshot-service",
- "snow-shot-app-services",
- "snow-shot-app-shared",
- "snow-shot-app-utils",
- "snow-shot-global-state",
- "snow-shot-http-services",
- "snow-shot-plugin-service",
- "snow-shot-tauri-commands-core",
- "snow-shot-tauri-commands-file",
- "snow-shot-tauri-commands-http-service",
- "snow-shot-tauri-commands-ocr",
- "snow-shot-tauri-commands-screenshot",
- "snow-shot-tauri-commands-scroll-screenshot",
- "snow-shot-webview",
- "tauri",
- "tauri-build",
- "tauri-plugin-autostart",
- "tauri-plugin-clipboard",
- "tauri-plugin-clipboard-manager",
- "tauri-plugin-dialog",
- "tauri-plugin-drag",
- "tauri-plugin-fs",
- "tauri-plugin-global-shortcut",
- "tauri-plugin-http",
- "tauri-plugin-log",
- "tauri-plugin-macos-permissions",
- "tauri-plugin-notification",
- "tauri-plugin-opener",
- "tauri-plugin-os",
- "tauri-plugin-process",
- "tauri-plugin-single-instance",
- "tauri-plugin-store",
- "tauri-plugin-updater",
- "tauri-plugin-window-state",
- "tokio",
-]
-
-[[package]]
-name = "snow-shot-app-os"
-version = "0.1.0"
-dependencies = [
- "atree",
- "log",
- "rayon",
- "rtree_rs",
- "serde",
- "snow-shot-app-shared",
- "snow-shot-app-utils",
- "tauri",
- "thiserror 2.0.18",
- "uiautomation",
- "windows 0.61.3",
- "xcap",
-]
-
-[[package]]
-name = "snow-shot-app-scroll-screenshot-service"
-version = "0.1.0"
-dependencies = [
- "fast_image_resize",
- "hora",
- "image",
- "imageproc",
- "rayon",
- "serde",
- "snow-shot-app-shared",
- "snow-shot-app-utils",
-]
-
-[[package]]
-name = "snow-shot-app-services"
-version = "0.1.0"
-dependencies = [
- "dashmap",
- "device_query",
- "ffmpeg-sidecar",
- "log",
- "macos-accessibility-client",
- "num_cpus",
- "ort",
- "paddle-ocr-rs",
- "regex",
- "serde",
- "snow-shot-app-shared",
- "snow-shot-app-utils",
- "tauri",
- "tokio",
- "xcap",
-]
-
-[[package]]
-name = "snow-shot-app-shared"
-version = "0.1.0"
-dependencies = [
- "enigo 0.6.1",
- "serde",
- "uiautomation",
-]
-
-[[package]]
-name = "snow-shot-app-utils"
-version = "0.1.0"
-dependencies = [
- "base64 0.22.1",
- "clipboard-win",
- "core-graphics-helmer-fork",
- "device_query",
- "half",
- "image",
- "log",
- "macos-accessibility-client",
- "objc2 0.6.4",
- "rayon",
- "scap",
- "serde",
- "snow-shot-app-shared",
- "snow-shot-webview",
- "tauri",
- "tokio",
- "webview2-com",
- "widestring",
- "windows 0.61.3",
- "windows-capture 2.0.0-alpha.7",
- "windows-core 0.61.2",
- "xcap",
- "zmeng-capture",
- "zune-core",
- "zune-jpegxl",
-]
-
-[[package]]
-name = "snow-shot-global-state"
-version = "0.1.0"
-dependencies = [
- "serde",
- "tokio",
-]
-
-[[package]]
-name = "snow-shot-http-services"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "log",
- "rust-s3",
- "serde",
- "thiserror 2.0.18",
- "tokio",
-]
-
-[[package]]
-name = "snow-shot-plugin-service"
-version = "0.1.0"
-dependencies = [
- "async_zip",
- "dashmap",
- "futures-lite",
- "futures-util",
- "log",
- "reqwest",
- "serde",
- "tauri",
- "tokio",
- "tokio-util",
-]
-
-[[package]]
-name = "snow-shot-tauri-commands-core"
-version = "0.1.0"
-dependencies = [
- "enigo 0.6.1",
- "futures",
- "get-selected-text",
- "log",
- "objc2 0.6.4",
- "objc2-app-kit",
- "objc2-foundation 0.3.2",
- "rayon",
- "serde",
- "snow-shot-app-os",
- "snow-shot-app-services",
- "snow-shot-app-shared",
- "snow-shot-app-utils",
- "snow-shot-webview",
- "tauri",
- "tauri-plugin-clipboard-manager",
- "tokio",
- "windows 0.61.3",
- "xcap",
-]
-
-[[package]]
-name = "snow-shot-tauri-commands-file"
-version = "0.1.0"
-dependencies = [
- "base64 0.22.1",
- "image",
- "log",
- "tauri",
- "tokio",
- "zune-core",
- "zune-jpegxl",
-]
-
-[[package]]
-name = "snow-shot-tauri-commands-http-service"
-version = "0.1.0"
-dependencies = [
- "log",
- "serde",
- "snow-shot-http-services",
- "tauri",
- "tokio",
-]
-
-[[package]]
-name = "snow-shot-tauri-commands-ocr"
-version = "0.1.0"
-dependencies = [
- "image",
- "log",
- "paddle-ocr-rs",
- "rayon",
- "serde",
- "snow-shot-app-services",
- "snow-shot-webview",
- "tauri",
- "tokio",
-]
-
-[[package]]
-name = "snow-shot-tauri-commands-screenshot"
-version = "0.1.0"
-dependencies = [
- "image",
- "log",
- "rayon",
- "serde",
- "snow-shot-app-os",
- "snow-shot-app-shared",
- "snow-shot-app-utils",
- "snow-shot-global-state",
- "snow-shot-webview",
- "tauri",
- "tokio",
- "webview2-com",
- "windows 0.61.3",
- "windows-core 0.61.2",
- "xcap",
- "zmeng-capture",
-]
-
-[[package]]
-name = "snow-shot-tauri-commands-scroll-screenshot"
-version = "0.1.0"
-dependencies = [
- "image",
- "scap",
- "serde",
- "snow-shot-app-scroll-screenshot-service",
- "snow-shot-app-shared",
- "snow-shot-app-utils",
- "snow-shot-global-state",
- "snow-shot-webview",
- "tauri",
- "tokio",
- "xcap",
-]
-
-[[package]]
-name = "snow-shot-webview"
-version = "0.1.0"
-dependencies = [
- "dashmap",
- "log",
- "tauri",
- "tokio",
- "webview2-com",
- "windows 0.61.3",
- "windows-core 0.61.2",
-]
-
-[[package]]
 name = "socket2"
 version = "0.5.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -10265,6 +9973,146 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2f06ae92f42f5e5c42443fd094f245eb656abf56dd7cce9b8b263236565e00f2"
 
 [[package]]
+name = "zmeng"
+version = "0.0.10"
+dependencies = [
+ "base64 0.22.1",
+ "log",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-autostart",
+ "tauri-plugin-clipboard",
+ "tauri-plugin-clipboard-manager",
+ "tauri-plugin-dialog",
+ "tauri-plugin-drag",
+ "tauri-plugin-fs",
+ "tauri-plugin-global-shortcut",
+ "tauri-plugin-http",
+ "tauri-plugin-log",
+ "tauri-plugin-macos-permissions",
+ "tauri-plugin-notification",
+ "tauri-plugin-opener",
+ "tauri-plugin-os",
+ "tauri-plugin-process",
+ "tauri-plugin-single-instance",
+ "tauri-plugin-store",
+ "tauri-plugin-updater",
+ "tauri-plugin-window-state",
+ "tokio",
+ "zmeng-app-os",
+ "zmeng-app-scroll-screenshot-service",
+ "zmeng-app-services",
+ "zmeng-app-shared",
+ "zmeng-app-utils",
+ "zmeng-global-state",
+ "zmeng-http-services",
+ "zmeng-plugin-service",
+ "zmeng-tauri-commands-core",
+ "zmeng-tauri-commands-file",
+ "zmeng-tauri-commands-http-service",
+ "zmeng-tauri-commands-ocr",
+ "zmeng-tauri-commands-screenshot",
+ "zmeng-tauri-commands-scroll-screenshot",
+ "zmeng-webview",
+]
+
+[[package]]
+name = "zmeng-app-os"
+version = "0.1.0"
+dependencies = [
+ "atree",
+ "log",
+ "rayon",
+ "rtree_rs",
+ "serde",
+ "tauri",
+ "thiserror 2.0.18",
+ "uiautomation",
+ "windows 0.61.3",
+ "xcap",
+ "zmeng-app-shared",
+ "zmeng-app-utils",
+]
+
+[[package]]
+name = "zmeng-app-scroll-screenshot-service"
+version = "0.1.0"
+dependencies = [
+ "fast_image_resize",
+ "hora",
+ "image",
+ "imageproc",
+ "rayon",
+ "serde",
+ "zmeng-app-shared",
+ "zmeng-app-utils",
+]
+
+[[package]]
+name = "zmeng-app-services"
+version = "0.1.0"
+dependencies = [
+ "dashmap",
+ "device_query",
+ "ffmpeg-sidecar",
+ "log",
+ "macos-accessibility-client",
+ "num_cpus",
+ "ort",
+ "paddle-ocr-rs",
+ "regex",
+ "serde",
+ "tauri",
+ "tokio",
+ "xcap",
+ "zmeng-app-shared",
+ "zmeng-app-utils",
+]
+
+[[package]]
+name = "zmeng-app-shared"
+version = "0.1.0"
+dependencies = [
+ "enigo 0.6.1",
+ "serde",
+ "uiautomation",
+]
+
+[[package]]
+name = "zmeng-app-utils"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
+ "clipboard-win",
+ "core-graphics-helmer-fork",
+ "device_query",
+ "half",
+ "image",
+ "log",
+ "macos-accessibility-client",
+ "objc2 0.6.4",
+ "rayon",
+ "scap",
+ "serde",
+ "tauri",
+ "tokio",
+ "webview2-com",
+ "widestring",
+ "windows 0.61.3",
+ "windows-capture 2.0.0-alpha.7",
+ "windows-core 0.61.2",
+ "xcap",
+ "zmeng-app-shared",
+ "zmeng-capture",
+ "zmeng-webview",
+ "zune-core",
+ "zune-jpegxl",
+]
+
+[[package]]
 name = "zmeng-capture"
 version = "0.1.0"
 dependencies = [
@@ -10272,6 +10120,158 @@ dependencies = [
  "log",
  "serde",
  "windows 0.61.3",
+]
+
+[[package]]
+name = "zmeng-global-state"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "tokio",
+]
+
+[[package]]
+name = "zmeng-http-services"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "log",
+ "rust-s3",
+ "serde",
+ "thiserror 2.0.18",
+ "tokio",
+]
+
+[[package]]
+name = "zmeng-plugin-service"
+version = "0.1.0"
+dependencies = [
+ "async_zip",
+ "dashmap",
+ "futures-lite",
+ "futures-util",
+ "log",
+ "reqwest",
+ "serde",
+ "tauri",
+ "tokio",
+ "tokio-util",
+]
+
+[[package]]
+name = "zmeng-tauri-commands-core"
+version = "0.1.0"
+dependencies = [
+ "enigo 0.6.1",
+ "futures",
+ "get-selected-text",
+ "log",
+ "objc2 0.6.4",
+ "objc2-app-kit",
+ "objc2-foundation 0.3.2",
+ "rayon",
+ "serde",
+ "tauri",
+ "tauri-plugin-clipboard-manager",
+ "tokio",
+ "windows 0.61.3",
+ "xcap",
+ "zmeng-app-os",
+ "zmeng-app-services",
+ "zmeng-app-shared",
+ "zmeng-app-utils",
+ "zmeng-webview",
+]
+
+[[package]]
+name = "zmeng-tauri-commands-file"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
+ "image",
+ "log",
+ "tauri",
+ "tokio",
+ "zune-core",
+ "zune-jpegxl",
+]
+
+[[package]]
+name = "zmeng-tauri-commands-http-service"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "serde",
+ "tauri",
+ "tokio",
+ "zmeng-http-services",
+]
+
+[[package]]
+name = "zmeng-tauri-commands-ocr"
+version = "0.1.0"
+dependencies = [
+ "image",
+ "log",
+ "paddle-ocr-rs",
+ "rayon",
+ "serde",
+ "tauri",
+ "tokio",
+ "zmeng-app-services",
+ "zmeng-webview",
+]
+
+[[package]]
+name = "zmeng-tauri-commands-screenshot"
+version = "0.1.0"
+dependencies = [
+ "image",
+ "log",
+ "rayon",
+ "serde",
+ "tauri",
+ "tokio",
+ "webview2-com",
+ "windows 0.61.3",
+ "windows-core 0.61.2",
+ "xcap",
+ "zmeng-app-os",
+ "zmeng-app-shared",
+ "zmeng-app-utils",
+ "zmeng-capture",
+ "zmeng-global-state",
+ "zmeng-webview",
+]
+
+[[package]]
+name = "zmeng-tauri-commands-scroll-screenshot"
+version = "0.1.0"
+dependencies = [
+ "image",
+ "scap",
+ "serde",
+ "tauri",
+ "tokio",
+ "xcap",
+ "zmeng-app-scroll-screenshot-service",
+ "zmeng-app-shared",
+ "zmeng-app-utils",
+ "zmeng-global-state",
+ "zmeng-webview",
+]
+
+[[package]]
+name = "zmeng-webview"
+version = "0.1.0"
+dependencies = [
+ "dashmap",
+ "log",
+ "tauri",
+ "tokio",
+ "webview2-com",
+ "windows 0.61.3",
+ "windows-core 0.61.2",
 ]
 
 [[package]]

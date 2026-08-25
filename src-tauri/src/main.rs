@@ -14,7 +14,7 @@ async fn main() {
     #[cfg(feature = "dhat-heap")]
     PROFILER.lock().await.replace(dhat::Profiler::new_heap());
 
-    snow_shot_lib::run_with_auto_restart();
+    zmeng_lib::run_with_auto_restart();
 }
 
 #[cfg(target_os = "windows")]
@@ -69,5 +69,5 @@ fn main() {
         std::thread::sleep(std::time::Duration::from_secs(DELAY_SECONDS));
     }
 
-    snow_shot_lib::run_with_auto_restart();
+    zmeng_lib::run_with_auto_restart();
 }

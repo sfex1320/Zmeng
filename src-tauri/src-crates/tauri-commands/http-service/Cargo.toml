@@ -1,11 +1,11 @@
 [package]
-name = "snow-shot-tauri-commands-http-service"
+name = "zmeng-tauri-commands-http-service"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
 # 项目内依赖
-snow-shot-http-services = { workspace = true }
+zmeng-http-services = { workspace = true }
 
 # Tauri
 tauri = { workspace = true }

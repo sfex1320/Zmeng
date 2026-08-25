@@ -3,7 +3,7 @@ use rayon::iter::{
     IndexedParallelIterator, IntoParallelIterator, IntoParallelRefIterator, ParallelIterator,
 };
 use serde::{Deserialize, Serialize};
-use snow_shot_app_shared::ElementRect;
+use zmeng_app_shared::ElementRect;
 #[cfg(target_os = "macos")]
 use xcap::Monitor;
 

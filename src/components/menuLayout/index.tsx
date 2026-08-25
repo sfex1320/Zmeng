@@ -42,6 +42,7 @@ import {
 	MenuSider,
 	type SidebarNavGroup,
 } from "./components/menuSider";
+import { normalizeMainWindow } from "@/utils/window";
 
 const NAV_GROUPS: SidebarNavGroup[] = [
 	{
@@ -218,7 +219,8 @@ const MenuLayoutCore: React.FC<{ children: React.ReactNode }> = ({
 
 	// 托盘「设置」入口：跳转到统一设置页
 	useEffect(() => {
-		const un = listen("zmeng://open-settings", () => {
+		const un = listen("zmeng://open-settings", async () => {
+			await normalizeMainWindow();
 			router.navigate({ to: "/settings/$cat", params: { cat: "general" } });
 		});
 		return () => {

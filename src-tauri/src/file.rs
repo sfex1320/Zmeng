@@ -1,25 +1,25 @@
-use snow_shot_app_services::file_cache_service::FileCacheService;
+use zmeng_app_services::file_cache_service::FileCacheService;
 use std::{path::PathBuf, sync::Arc};
 use tauri::command;
 
 #[command]
 pub async fn save_file(request: tauri::ipc::Request<'_>) -> Result<(), String> {
-    snow_shot_tauri_commands_file::save_file(request).await
+    zmeng_tauri_commands_file::save_file(request).await
 }
 
 #[command]
 pub async fn write_file(request: tauri::ipc::Request<'_>) -> Result<(), String> {
-    snow_shot_tauri_commands_file::write_file(request).await
+    zmeng_tauri_commands_file::write_file(request).await
 }
 
 #[command]
 pub async fn remove_file(file_path: PathBuf) -> Result<(), String> {
-    snow_shot_tauri_commands_file::remove_file(file_path).await
+    zmeng_tauri_commands_file::remove_file(file_path).await
 }
 
 #[command]
 pub async fn copy_file(from: PathBuf, to: PathBuf) -> Result<(), String> {
-    snow_shot_tauri_commands_file::copy_file(from, to).await
+    zmeng_tauri_commands_file::copy_file(from, to).await
 }
 
 #[command]

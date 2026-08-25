@@ -1,5 +1,5 @@
 [package]
-name = "snow-shot-tauri-commands-ocr"
+name = "zmeng-tauri-commands-ocr"
 version = "0.1.0"
 edition = "2024"
 
@@ -11,9 +11,9 @@ image = { workspace = true }
 log = { workspace = true }
 rayon = { workspace = true }
 
-snow-shot-app-services = { workspace = true }
+zmeng-app-services = { workspace = true }
 
 paddle-ocr-rs = "0.6.0"
 
 [target.'cfg(any(target_os = "windows"))'.dependencies]
-snow-shot-webview = { workspace = true }
+zmeng-webview = { workspace = true }

@@ -10,16 +10,16 @@ use tauri::Emitter;
 use tauri::Manager;
 use tokio::{fs, sync::Mutex, time};
 
-use snow_shot_app_os::notification;
-use snow_shot_app_services::{
+use zmeng_app_os::notification;
+use zmeng_app_services::{
     free_drag_window_service::FreeDragWindowService,
     hot_load_page_service::HotLoadPageRoutePushEvent, resize_window_service::ResizeWindowSide,
 };
-use snow_shot_app_services::{
+use zmeng_app_services::{
     hot_load_page_service::HotLoadPageService, resize_window_service::ResizeWindowService,
 };
-use snow_shot_app_shared::{ElementRect, EnigoManager};
-use snow_shot_app_utils::{get_target_monitor, monitor_info::MonitorRect};
+use zmeng_app_shared::{ElementRect, EnigoManager};
+use zmeng_app_utils::{get_target_monitor, monitor_info::MonitorRect};
 
 pub async fn exit_app(handle: tauri::AppHandle) {
     handle.exit(0);
@@ -515,7 +515,7 @@ pub async fn get_monitors_bounding_box(
     enable_multiple_monitor: bool,
 ) -> Result<MonitorsBoundingBox, String> {
     let monitors =
-        snow_shot_app_utils::get_capture_monitor_list(app, region, enable_multiple_monitor, true)?;
+        zmeng_app_utils::get_capture_monitor_list(app, region, enable_multiple_monitor, true)?;
 
     let monitors_bounding_box = monitors.get_monitors_bounding_box();
 
@@ -837,19 +837,19 @@ pub async fn close_window_after_delay(window: tauri::Window, delay: u64) {
 }
 
 pub async fn create_admin_auto_start_task() -> Result<(), String> {
-    snow_shot_app_os::utils::create_admin_auto_start_task()
+    zmeng_app_os::utils::create_admin_auto_start_task()
 }
 
 pub async fn delete_admin_auto_start_task() -> Result<(), String> {
-    snow_shot_app_os::utils::delete_admin_auto_start_task()
+    zmeng_app_os::utils::delete_admin_auto_start_task()
 }
 
 pub async fn restart_with_admin() -> Result<(), String> {
-    snow_shot_app_os::utils::restart_with_admin()
+    zmeng_app_os::utils::restart_with_admin()
 }
 
 pub async fn is_admin() -> Result<bool, String> {
-    Ok(snow_shot_app_os::utils::is_admin())
+    Ok(zmeng_app_os::utils::is_admin())
 }
 
 pub async fn write_bitmap_image_to_clipboard(
@@ -864,15 +864,15 @@ pub async fn write_bitmap_image_to_clipboard(
         }
     };
 
-    snow_shot_app_utils::write_bitmap_image_to_clipboard(image_data).await
+    zmeng_app_utils::write_bitmap_image_to_clipboard(image_data).await
 }
 
 #[cfg(target_os = "windows")]
 pub async fn write_bitmap_image_to_clipboard_with_shared_buffer(
-    shared_buffer_service: tauri::State<'_, Arc<snow_shot_webview::SharedBufferService>>,
+    shared_buffer_service: tauri::State<'_, Arc<zmeng_webview::SharedBufferService>>,
     channel_id: String,
 ) -> Result<(), String> {
-    snow_shot_app_utils::write_bitmap_image_to_clipboard_with_shared_buffer(
+    zmeng_app_utils::write_bitmap_image_to_clipboard_with_shared_buffer(
         shared_buffer_service,
         channel_id,
     )
@@ -984,13 +984,13 @@ pub async fn set_exclude_from_capture(
     #[allow(unused_variables)] window: tauri::Window,
     #[allow(unused_variables)] enable: bool,
 ) -> Result<(), String> {
-    snow_shot_app_utils::set_exclude_from_capture(&window, enable).await
+    zmeng_app_utils::set_exclude_from_capture(&window, enable).await
 }
 
 #[cfg(target_os = "windows")]
 pub async fn write_image_pixels_to_clipboard_with_shared_buffer(
     app: tauri::AppHandle,
-    shared_buffer_service: tauri::State<'_, Arc<snow_shot_webview::SharedBufferService>>,
+    shared_buffer_service: tauri::State<'_, Arc<zmeng_webview::SharedBufferService>>,
     channel_id: String,
 ) -> Result<(), String> {
     use tauri_plugin_clipboard_manager::ClipboardExt;
@@ -1109,7 +1109,7 @@ pub async fn has_focused_full_screen_window() -> Result<bool, String> {
         // 并行获取 monitor_list 和 windows
         let (monitor_list, windows) = tokio::join!(
             tokio::task::spawn_blocking(|| {
-                snow_shot_app_utils::monitor_info::MonitorList::all(true)
+                zmeng_app_utils::monitor_info::MonitorList::all(true)
             }),
             tokio::task::spawn_blocking(|| {
                 xcap::Window::all()

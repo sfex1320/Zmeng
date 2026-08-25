@@ -1,5 +1,5 @@
 [package]
-name = "snow-shot-app-utils"
+name = "zmeng-app-utils"
 version = "0.1.0"
 edition = "2024"
 
@@ -13,7 +13,7 @@ device_query = { workspace = true }
 image = { workspace = true }
 log = { workspace = true }
 rayon = { workspace = true }
-snow-shot-app-shared = { workspace = true }
+zmeng-app-shared = { workspace = true }
 tokio = { workspace = true }
 serde = { workspace = true }
 base64 = { workspace = true }
@@ -33,5 +33,5 @@ windows-capture = "2.0.0-alpha.7"
 half = "2.6.0"
 webview2-com = "0.38.0"
 windows-core = { version = "0.61" }
-snow-shot-webview = { workspace = true }
+zmeng-webview = { workspace = true }
 clipboard-win = { workspace = true }

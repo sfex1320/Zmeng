@@ -1,4 +1,5 @@
 import {
+	currentMonitor,
 	getCurrentWindow,
 	PhysicalPosition,
 	PhysicalSize,
@@ -6,6 +7,39 @@ import {
 } from "@tauri-apps/api/window";
 import type { ElementRect } from "@/types/commands/screenshot";
 import { getPlatform } from "./platform";
+
+/**
+ * 主窗口尺寸归一化：窗口尺寸异常（高度接近/超过整屏、比例失衡）时
+ * 重置为默认大小并居中。曾出现"设置窗口灌满整屏"的尺寸记忆异常。
+ */
+export const normalizeMainWindow = async () => {
+	try {
+		const appWindow = getCurrentWindow();
+		if (await appWindow.isMaximized()) {
+			return;
+		}
+		const size = await appWindow.outerSize();
+		const monitor = await currentMonitor();
+		if (!monitor) {
+			return;
+		}
+		const scale = monitor.scaleFactor || 1;
+		const screenH = monitor.size.height / scale;
+		const screenW = monitor.size.width / scale;
+		const w = size.width / scale;
+		const h = size.height / scale;
+		// 高度灌满整屏 / 明显超出屏幕 / 比例失衡（高远大于宽）时重置
+		const abnormal =
+			h >= screenH * 0.98 || h > screenH || w > screenW || h > w * 2.2;
+		if (abnormal) {
+			const { LogicalSize } = await import("@tauri-apps/api/dpi");
+			await appWindow.setSize(new LogicalSize(1180, 760));
+			await appWindow.center();
+		}
+	} catch {
+		// 尺寸读取失败不影响显示
+	}
+};
 
 export const showWindow = async (ignoreFocus = false) => {
 	const appWindow = getCurrentWindow();

@@ -4,7 +4,7 @@ use rayon::iter::IntoParallelIterator;
 use rayon::iter::ParallelIterator;
 use serde::Deserialize;
 use serde::Serialize;
-use snow_shot_app_services::ocr_service::{OcrModel, OcrService};
+use zmeng_app_services::ocr_service::{OcrModel, OcrService};
 use std::io::Cursor;
 use std::path::PathBuf;
 use tokio::sync::Mutex;
@@ -158,7 +158,7 @@ pub async fn ocr_detect(
 #[cfg(target_os = "windows")]
 pub async fn ocr_detect_with_shared_buffer(
     ocr_service: tauri::State<'_, Mutex<OcrService>>,
-    shared_buffer_service: tauri::State<'_, std::sync::Arc<snow_shot_webview::SharedBufferService>>,
+    shared_buffer_service: tauri::State<'_, std::sync::Arc<zmeng_webview::SharedBufferService>>,
     channel_id: String,
     scale_factor: f32,
     detect_angle: bool,

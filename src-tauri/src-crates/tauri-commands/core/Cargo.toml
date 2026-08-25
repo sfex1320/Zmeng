@@ -1,13 +1,13 @@
 [package]
-name = "snow-shot-tauri-commands-core"
+name = "zmeng-tauri-commands-core"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-snow-shot-app-shared = { workspace = true }
-snow-shot-app-utils = { workspace = true }
-snow-shot-app-os = { workspace = true }
-snow-shot-app-services = { workspace = true }
+zmeng-app-shared = { workspace = true }
+zmeng-app-utils = { workspace = true }
+zmeng-app-os = { workspace = true }
+zmeng-app-services = { workspace = true }
 
 enigo = { workspace = true }
 serde = { workspace = true }
@@ -29,5 +29,5 @@ objc2-foundation = { workspace = true }
 windows = { workspace = true, features = [
     "Win32_UI",
 ] }
-snow-shot-webview = { workspace = true }
+zmeng-webview = { workspace = true }
 tauri-plugin-clipboard-manager = { workspace = true }

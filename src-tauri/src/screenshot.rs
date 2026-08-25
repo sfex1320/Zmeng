@@ -3,18 +3,18 @@ use tauri::ipc::Response;
 use tauri_plugin_clipboard_manager::ClipboardExt;
 use tokio::sync::Mutex;
 
-use snow_shot_app_os::ui_automation::UIElements;
-use snow_shot_app_shared::ElementRect;
-use snow_shot_app_utils::monitor_info::CorrectHdrColorAlgorithm;
-use snow_shot_global_state::WebViewSharedBufferState;
-use snow_shot_tauri_commands_screenshot::{CaptureFullScreenResult, WindowElement};
+use zmeng_app_os::ui_automation::UIElements;
+use zmeng_app_shared::ElementRect;
+use zmeng_app_utils::monitor_info::CorrectHdrColorAlgorithm;
+use zmeng_global_state::WebViewSharedBufferState;
+use zmeng_tauri_commands_screenshot::{CaptureFullScreenResult, WindowElement};
 
 #[command]
 pub async fn capture_current_monitor(
     window: tauri::Window,
     encoder: String,
 ) -> Result<Response, String> {
-    snow_shot_tauri_commands_screenshot::capture_current_monitor(window, encoder).await
+    zmeng_tauri_commands_screenshot::capture_current_monitor(window, encoder).await
 }
 
 #[command]
@@ -27,7 +27,7 @@ pub async fn capture_all_monitors(
     correct_hdr_color_algorithm: CorrectHdrColorAlgorithm,
     correct_color_filter: bool,
 ) -> Result<Response, String> {
-    snow_shot_tauri_commands_screenshot::capture_all_monitors(
+    zmeng_tauri_commands_screenshot::capture_all_monitors(
         app,
         window,
         webview,
@@ -50,10 +50,10 @@ pub async fn capture_focused_window(
     focus_window_app_name_variable_name: String,
     correct_hdr_color_algorithm: CorrectHdrColorAlgorithm,
 ) -> Result<(), String> {
-    snow_shot_tauri_commands_screenshot::capture_focused_window(
+    zmeng_tauri_commands_screenshot::capture_focused_window(
         move |image| {
             // 自写剪贴板前登记标记，剪贴板侧栏监听据此跳过，避免产生重复记录
-            snow_shot_app_shared::mark_clipboard_self_write();
+            zmeng_app_shared::mark_clipboard_self_write();
             match app.clipboard().write_image(&tauri::image::Image::new(
             image.as_bytes(),
             image.width(),
@@ -76,24 +76,24 @@ pub async fn capture_focused_window(
 
 #[command]
 pub async fn init_ui_elements(ui_elements: tauri::State<'_, Mutex<UIElements>>) -> Result<(), ()> {
-    snow_shot_tauri_commands_screenshot::init_ui_elements(ui_elements).await
+    zmeng_tauri_commands_screenshot::init_ui_elements(ui_elements).await
 }
 
 #[command]
 pub async fn init_ui_elements_cache(
     ui_elements: tauri::State<'_, Mutex<UIElements>>,
 ) -> Result<(), String> {
-    snow_shot_tauri_commands_screenshot::init_ui_elements_cache(ui_elements).await
+    zmeng_tauri_commands_screenshot::init_ui_elements_cache(ui_elements).await
 }
 
 #[command]
 pub async fn get_window_elements(window: tauri::Window) -> Result<Vec<WindowElement>, ()> {
-    snow_shot_tauri_commands_screenshot::get_window_elements(window).await
+    zmeng_tauri_commands_screenshot::get_window_elements(window).await
 }
 
 #[command]
 pub async fn switch_always_on_top(window_id: u32) -> bool {
-    snow_shot_tauri_commands_screenshot::switch_always_on_top(window_id).await
+    zmeng_tauri_commands_screenshot::switch_always_on_top(window_id).await
 }
 
 #[command]
@@ -102,23 +102,23 @@ pub async fn get_element_from_position(
     mouse_x: i32,
     mouse_y: i32,
 ) -> Result<Vec<ElementRect>, ()> {
-    snow_shot_tauri_commands_screenshot::get_element_from_position(ui_elements, mouse_x, mouse_y)
+    zmeng_tauri_commands_screenshot::get_element_from_position(ui_elements, mouse_x, mouse_y)
         .await
 }
 
 #[command]
 pub async fn get_mouse_position(app: tauri::AppHandle) -> Result<(i32, i32), String> {
-    snow_shot_tauri_commands_screenshot::get_mouse_position(app).await
+    zmeng_tauri_commands_screenshot::get_mouse_position(app).await
 }
 
 #[command]
 pub async fn create_draw_window(app: tauri::AppHandle) {
-    snow_shot_tauri_commands_screenshot::create_draw_window(app).await
+    zmeng_tauri_commands_screenshot::create_draw_window(app).await
 }
 
 #[command]
 pub async fn set_draw_window_style(window: tauri::Window) {
-    snow_shot_tauri_commands_screenshot::set_draw_window_style(window).await
+    zmeng_tauri_commands_screenshot::set_draw_window_style(window).await
 }
 
 #[command]
@@ -131,11 +131,11 @@ pub async fn capture_full_screen(
     correct_hdr_color_algorithm: CorrectHdrColorAlgorithm,
     correct_color_filter: bool,
 ) -> Result<CaptureFullScreenResult, String> {
-    snow_shot_tauri_commands_screenshot::capture_full_screen(
+    zmeng_tauri_commands_screenshot::capture_full_screen(
         app.clone(),
         move |image| {
             // 自写剪贴板前登记标记，剪贴板侧栏监听据此跳过，避免产生重复记录
-            snow_shot_app_shared::mark_clipboard_self_write();
+            zmeng_app_shared::mark_clipboard_self_write();
             match app.clipboard().write_image(&tauri::image::Image::new(
             image.to_rgba8().as_raw(),
             image.width(),

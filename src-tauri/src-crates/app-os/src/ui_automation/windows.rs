@@ -15,8 +15,8 @@ use uiautomation::types::TreeScope;
 use uiautomation::types::UIProperty;
 
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-use snow_shot_app_shared::ElementRect;
-use snow_shot_app_utils::monitor_info::MonitorList;
+use zmeng_app_shared::ElementRect;
+use zmeng_app_utils::monitor_info::MonitorList;
 use std::sync::Arc;
 use windows::Win32::Foundation::HWND;
 use xcap::ImplWindow;

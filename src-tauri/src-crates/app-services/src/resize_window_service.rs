@@ -53,7 +53,7 @@ impl ResizeWindowService {
         // 计算当前鼠标相对窗口的位置
         // windows 下获取的是物理像素，macOS 下获取的是逻辑像素
         // 为了方便处理，计算时 windows 下用物理像素，macOS 下用逻辑像素
-        let (mouse_x, mouse_y) = snow_shot_app_utils::get_device_state()?.get_mouse().coords;
+        let (mouse_x, mouse_y) = zmeng_app_utils::get_device_state()?.get_mouse().coords;
         let (mouse_x, mouse_y) = (mouse_x as f64, mouse_y as f64);
 
         let window_position = match window.outer_position() {

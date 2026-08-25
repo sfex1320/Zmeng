@@ -4,8 +4,8 @@ use tokio::sync::Mutex;
 
 use tauri::command;
 
-use snow_shot_app_services::video_record_service::VideoFormat;
-use snow_shot_app_services::video_record_service::VideoRecordService;
+use zmeng_app_services::video_record_service::VideoFormat;
+use zmeng_app_services::video_record_service::VideoRecordService;
 
 #[command]
 pub async fn video_record_init(

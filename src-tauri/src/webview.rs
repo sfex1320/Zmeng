@@ -1,5 +1,5 @@
-use snow_shot_global_state::WebViewSharedBufferState;
-use snow_shot_webview::create_shared_buffer;
+use zmeng_global_state::WebViewSharedBufferState;
+use zmeng_webview::create_shared_buffer;
 use tauri::command;
 
 #[command]
@@ -27,7 +27,7 @@ pub async fn set_support_webview_shared_buffer(
 #[command]
 pub async fn create_webview_shared_buffer_channel(
     webview_shared_buffer_state: tauri::State<'_, WebViewSharedBufferState>,
-    shared_buffer_service: tauri::State<'_, std::sync::Arc<snow_shot_webview::SharedBufferService>>,
+    shared_buffer_service: tauri::State<'_, std::sync::Arc<zmeng_webview::SharedBufferService>>,
     webview: tauri::Webview,
     channel_id: String,
     data_size: usize,

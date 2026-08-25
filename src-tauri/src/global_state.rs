@@ -1,7 +1,7 @@
 use tauri::command;
 use tokio::sync::Mutex;
 
-use snow_shot_global_state::{CaptureState, ReadClipboardState};
+use zmeng_global_state::{CaptureState, ReadClipboardState};
 
 #[command]
 pub async fn set_capture_state(

@@ -67,7 +67,7 @@ export const AboutPage = () => {
 						}
 						style={{ display: "block", cursor: "pointer" }}
 						size="small"
-						onClick={() => openUrl("https://snowshot.top/")}
+						onClick={() => openUrl("https://github.com/sfex1320/Zmeng")}
 					>
 						<div
 							style={{
@@ -90,7 +90,7 @@ export const AboutPage = () => {
 					<Tag color="blue">
 						<a
 							style={{ color: token.colorLink }}
-							onClick={() => openUrl("https://snowshot.top/")}
+							onClick={() => openUrl("https://github.com/sfex1320/Zmeng")}
 						>
 							{intl.formatMessage({ id: "about.version" })} {version}
 						</a>

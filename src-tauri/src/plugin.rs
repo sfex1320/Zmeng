@@ -1,5 +1,5 @@
-use snow_shot_plugin_service::plugin_service::PluginService;
-use snow_shot_plugin_service::plugin_service::PluginStatusResult;
+use zmeng_plugin_service::plugin_service::PluginService;
+use zmeng_plugin_service::plugin_service::PluginStatusResult;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tauri::command;

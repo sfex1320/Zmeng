@@ -1,12 +1,12 @@
 use image::DynamicImage;
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use serde::Serialize;
-use snow_shot_app_os::ui_automation::UIElements;
-use snow_shot_app_shared::ElementRect;
-use snow_shot_app_utils::monitor_info::{
+use zmeng_app_os::ui_automation::UIElements;
+use zmeng_app_shared::ElementRect;
+use zmeng_app_utils::monitor_info::{
     CaptureOption, ColorFormat, CorrectHdrColorAlgorithm, MonitorList,
 };
-use snow_shot_global_state::WebViewSharedBufferState;
+use zmeng_global_state::WebViewSharedBufferState;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -18,9 +18,9 @@ pub async fn capture_current_monitor(
     encoder: String,
 ) -> Result<Response, String> {
     // 获取当前鼠标的位置
-    let monitor = snow_shot_app_utils::get_target_monitor()?;
+    let monitor = zmeng_app_utils::get_target_monitor()?;
 
-    let image_buffer = match snow_shot_app_utils::capture_target_monitor(
+    let image_buffer = match zmeng_app_utils::capture_target_monitor(
         monitor.min_x,
         monitor.min_y,
         None,
@@ -34,12 +34,12 @@ pub async fn capture_current_monitor(
         }
     };
 
-    let image_buffer = snow_shot_app_utils::encode_image(
+    let image_buffer = zmeng_app_utils::encode_image(
         &image_buffer,
         match encoder.as_str() {
-            "webp" => snow_shot_app_utils::ImageEncoder::Webp,
-            "png" => snow_shot_app_utils::ImageEncoder::Png,
-            _ => snow_shot_app_utils::ImageEncoder::Webp,
+            "webp" => zmeng_app_utils::ImageEncoder::Webp,
+            "png" => zmeng_app_utils::ImageEncoder::Png,
+            _ => zmeng_app_utils::ImageEncoder::Webp,
         },
     );
 
@@ -60,7 +60,7 @@ pub async fn capture_all_monitors(
 ) -> Result<Response, String> {
     #[cfg(target_os = "macos")]
     {
-        let image = snow_shot_app_utils::get_capture_monitor_list(
+        let image = zmeng_app_utils::get_capture_monitor_list(
             &app_handle,
             None,
             enable_multiple_monitor,
@@ -77,14 +77,14 @@ pub async fn capture_all_monitors(
         .await?;
 
         let image_buffer =
-            snow_shot_app_utils::encode_image(&image, snow_shot_app_utils::ImageEncoder::Png);
+            zmeng_app_utils::encode_image(&image, zmeng_app_utils::ImageEncoder::Png);
 
         Ok(Response::new(image_buffer))
     }
 
     #[cfg(target_os = "windows")]
     {
-        let image = snow_shot_app_utils::get_capture_monitor_list(
+        let image = zmeng_app_utils::get_capture_monitor_list(
             &app_handle,
             None,
             enable_multiple_monitor,
@@ -117,7 +117,7 @@ pub async fn capture_all_monitors(
                 );
             }
 
-            snow_shot_webview::create_shared_buffer(
+            zmeng_webview::create_shared_buffer(
                 webview,
                 image.as_bytes(),
                 &extra_data,
@@ -129,7 +129,7 @@ pub async fn capture_all_monitors(
             Ok(Response::new(vec![1]))
         } else {
             let image_buffer =
-                snow_shot_app_utils::encode_image(&image, snow_shot_app_utils::ImageEncoder::Png);
+                zmeng_app_utils::encode_image(&image, zmeng_app_utils::ImageEncoder::Png);
 
             Ok(Response::new(image_buffer))
         }
@@ -148,7 +148,7 @@ where
     let image = Arc::new(image);
     // 并行执行保存文件和写入剪贴板
     let save_file_future =
-        snow_shot_app_utils::save_image_to_file(&image, PathBuf::from(file_path));
+        zmeng_app_utils::save_image_to_file(&image, PathBuf::from(file_path));
     let clipboard_future = if copy_to_clipboard {
         let image_clone = Arc::clone(&image);
         Some(tokio::task::spawn_blocking(
@@ -181,8 +181,8 @@ where
 
 #[cfg(target_os = "windows")]
 pub fn capture_window_hdr_image(hwnd: isize) -> Option<image::DynamicImage> {
-    use snow_shot_app_utils::monitor_hdr_info::get_all_monitors_sdr_info;
-    use snow_shot_app_utils::windows_capture_image;
+    use zmeng_app_utils::monitor_hdr_info::get_all_monitors_sdr_info;
+    use zmeng_app_utils::windows_capture_image;
     use windows::Win32::Foundation::HWND;
     use windows::Win32::Graphics::Gdi::{
         GetMonitorInfoW, MonitorFromWindow, HMONITOR, MONITOR_DEFAULTTONEAREST, MONITORINFOEXW,
@@ -220,7 +220,7 @@ pub fn capture_window_hdr_image(hwnd: isize) -> Option<image::DynamicImage> {
         return None;
     }
 
-    let monitor_info = snow_shot_app_utils::monitor_info::MonitorInfo::new(
+    let monitor_info = zmeng_app_utils::monitor_info::MonitorInfo::new(
         &meta,
         Some(hdr_info.clone()),
     );
@@ -259,7 +259,7 @@ where
 
     #[cfg(target_os = "windows")]
     {
-        let hwnd = snow_shot_app_os::utils::get_focused_window();
+        let hwnd = zmeng_app_os::utils::get_focused_window();
         let hwnd_value = hwnd.0 as isize;
 
         // ZMENG 自研：进程名 + PrintWindow(PW_RENDERFULLCONTENT) 客户区捕获，无 xcap
@@ -279,7 +279,7 @@ where
                     log::warn!(
                         "[capture_focused_window] Failed to capture focused window: {e}，回退当前显示器"
                     );
-                    let monitor = snow_shot_app_utils::get_target_monitor()?;
+                    let monitor = zmeng_app_utils::get_target_monitor()?;
                     let (rgba, _) = zmeng_capture::capture_monitor_by_rect_blocking(
                         monitor.min_x,
                         monitor.min_y,
@@ -295,7 +295,7 @@ where
 
     #[cfg(target_os = "linux")]
     {
-        let (_, _, monitor) = snow_shot_app_utils::get_target_monitor();
+        let (_, _, monitor) = zmeng_app_utils::get_target_monitor();
 
         image = match monitor.capture_image() {
             Ok(image) => image,
@@ -336,7 +336,7 @@ where
                 log::warn!("[capture_focused_window] Failed to capture focused window");
                 // 改成捕获当前显示器
 
-                let (_, _, monitor) = snow_shot_app_utils::get_target_monitor()?;
+                let (_, _, monitor) = zmeng_app_utils::get_target_monitor()?;
 
                 match monitor.capture_image() {
                     Ok(image) => DynamicImage::ImageRgba8(image),
@@ -575,17 +575,17 @@ pub async fn switch_always_on_top(#[allow(unused_variables)] window_id: u32) -> 
             Err(_) => return false,
         };
 
-        snow_shot_app_os::utils::switch_always_on_top(window_hwnd);
+        zmeng_app_os::utils::switch_always_on_top(window_hwnd);
     }
 
     #[cfg(target_os = "linux")]
     {
-        snow_shot_app_os::utils::switch_always_on_top();
+        zmeng_app_os::utils::switch_always_on_top();
     }
 
     #[cfg(target_os = "macos")]
     {
-        snow_shot_app_os::utils::switch_always_on_top();
+        zmeng_app_os::utils::switch_always_on_top();
     }
 
     true
@@ -609,7 +609,7 @@ pub async fn get_element_from_position(
 }
 
 pub async fn get_mouse_position(app: tauri::AppHandle) -> Result<(i32, i32), String> {
-    snow_shot_app_utils::get_mouse_position(&app)
+    zmeng_app_utils::get_mouse_position(&app)
 }
 
 pub async fn create_draw_window(app: tauri::AppHandle) {
@@ -669,7 +669,7 @@ pub async fn create_draw_window(app: tauri::AppHandle) {
 }
 
 pub async fn set_draw_window_style(window: tauri::Window) {
-    snow_shot_app_os::utils::set_draw_window_style(window);
+    zmeng_app_os::utils::set_draw_window_style(window);
 }
 
 #[derive(Serialize, Clone)]
@@ -694,7 +694,7 @@ where
     F: Fn(&image::DynamicImage) -> Result<(), String> + Send + 'static,
 {
     // 激活的显示器
-    let (mouse_x, mouse_y) = snow_shot_app_utils::get_mouse_position(&app_handle)?;
+    let (mouse_x, mouse_y) = zmeng_app_utils::get_mouse_position(&app_handle)?;
     let active_monitor = MonitorList::get_by_region(
         ElementRect {
             min_x: mouse_x,
@@ -705,7 +705,7 @@ where
         correct_hdr_color_algorithm == CorrectHdrColorAlgorithm::None,
     );
     // 所有显示器
-    let monitor_list = snow_shot_app_utils::get_capture_monitor_list(
+    let monitor_list = zmeng_app_utils::get_capture_monitor_list(
         &app_handle,
         None,
         enable_multiple_monitor,

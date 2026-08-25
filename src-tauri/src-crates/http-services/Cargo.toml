@@ -1,5 +1,5 @@
 [package]
-name = "snow-shot-http-services"
+name = "zmeng-http-services"
 version = "0.1.0"
 edition = "2021"
 

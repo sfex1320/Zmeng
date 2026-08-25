@@ -1,6 +1,6 @@
 use half::prelude::f16;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use snow_shot_app_shared::ElementRect;
+use zmeng_app_shared::ElementRect;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{Sender, channel};
 use windows::Win32::Foundation::HWND;

@@ -1,5 +1,5 @@
-use snow_shot_app_shared::ElementRect;
-use snow_shot_app_utils::monitor_info::MonitorList;
+use zmeng_app_shared::ElementRect;
+use zmeng_app_utils::monitor_info::MonitorList;
 use std::sync::Arc;
 
 /**

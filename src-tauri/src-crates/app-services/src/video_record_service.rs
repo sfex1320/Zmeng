@@ -2,7 +2,7 @@ use ffmpeg_sidecar::{child::FfmpegChild, command::FfmpegCommand, event::FfmpegEv
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 #[cfg(target_os = "macos")]
-use snow_shot_app_utils::monitor_info::MonitorList;
+use zmeng_app_utils::monitor_info::MonitorList;
 use std::{
     io::Result,
     path::{Path, PathBuf},
@@ -383,7 +383,7 @@ impl VideoRecordService {
 
             // 没有找到对应的显示器，回退到默认显示器
             for (monitor_index, monitor) in monitor_list.iter().enumerate() {
-                use snow_shot_app_shared::ElementRect;
+                use zmeng_app_shared::ElementRect;
 
                 if monitor.rect.overlaps(&ElementRect {
                     min_x: params.min_x,
@@ -508,7 +508,7 @@ impl VideoRecordService {
                         if let Some(monitor) = monitor_list.iter().nth(target_monitor_index) {
                             monitor.rect
                         } else {
-                            snow_shot_app_shared::ElementRect {
+                            zmeng_app_shared::ElementRect {
                                 min_x: 0,
                                 min_y: 0,
                                 max_x: 0,

@@ -1,6 +1,6 @@
-use snow_shot_app_shared::{ElementRect, EnigoManager};
-use snow_shot_global_state::WebViewSharedBufferState;
-use snow_shot_tauri_commands_core::{
+use zmeng_app_shared::{ElementRect, EnigoManager};
+use zmeng_global_state::WebViewSharedBufferState;
+use zmeng_tauri_commands_core::{
     FullScreenDrawWindowLabels, MonitorsBoundingBox, VideoRecordWindowLabels,
 };
 use std::{path::PathBuf, sync::Arc};
@@ -13,15 +13,15 @@ pub async fn exit_app(handle: tauri::AppHandle) {
     #[cfg(feature = "dhat-heap")]
     drop(crate::PROFILER.lock().await.take());
 
-    snow_shot_tauri_commands_core::exit_app(handle).await;
+    zmeng_tauri_commands_core::exit_app(handle).await;
 }
 
 #[command]
 pub async fn get_selected_text() -> String {
-    let mut text = snow_shot_tauri_commands_core::get_selected_text().await;
+    let mut text = zmeng_tauri_commands_core::get_selected_text().await;
     if text.is_empty() {
         tokio::time::sleep(tokio::time::Duration::from_millis(83)).await;
-        text = snow_shot_tauri_commands_core::get_selected_text().await;
+        text = zmeng_tauri_commands_core::get_selected_text().await;
     }
 
     text
@@ -29,7 +29,7 @@ pub async fn get_selected_text() -> String {
 
 #[command]
 pub async fn set_enable_proxy(enable: bool, host: String) -> Result<(), ()> {
-    snow_shot_tauri_commands_core::set_enable_proxy(enable, host).await
+    zmeng_tauri_commands_core::set_enable_proxy(enable, host).await
 }
 
 /// 鼠标滚轮穿透
@@ -39,7 +39,7 @@ pub async fn scroll_through(
     enigo_manager: tauri::State<'_, Mutex<EnigoManager>>,
     length: i32,
 ) -> Result<(), String> {
-    snow_shot_tauri_commands_core::scroll_through(window, enigo_manager, length).await
+    zmeng_tauri_commands_core::scroll_through(window, enigo_manager, length).await
 }
 
 /// 鼠标滚轮穿透
@@ -49,13 +49,13 @@ pub async fn auto_scroll_through(
     direction: String,
     length: i32,
 ) -> Result<(), String> {
-    snow_shot_tauri_commands_core::auto_scroll_through(enigo_manager, direction, length).await
+    zmeng_tauri_commands_core::auto_scroll_through(enigo_manager, direction, length).await
 }
 
 /// 鼠标滚轮穿透
 #[command]
 pub async fn click_through(window: tauri::Window) -> Result<(), ()> {
-    snow_shot_tauri_commands_core::click_through(window).await
+    zmeng_tauri_commands_core::click_through(window).await
 }
 
 /// 创建内容固定到屏幕的窗口
@@ -64,11 +64,11 @@ pub async fn create_fixed_content_window(
     app: tauri::AppHandle,
     hot_load_page_service: tauri::State<
         '_,
-        Arc<snow_shot_app_services::hot_load_page_service::HotLoadPageService>,
+        Arc<zmeng_app_services::hot_load_page_service::HotLoadPageService>,
     >,
     scroll_screenshot: bool,
 ) -> Result<(), String> {
-    snow_shot_tauri_commands_core::create_fixed_content_window(
+    zmeng_tauri_commands_core::create_fixed_content_window(
         app,
         hot_load_page_service,
         scroll_screenshot,
@@ -113,7 +113,7 @@ pub async fn read_image_from_clipboard(
                 );
             }
 
-            snow_shot_webview::create_shared_buffer(
+            zmeng_webview::create_shared_buffer(
                 webview,
                 image_data.rgba(),
                 &extra_data,
@@ -141,10 +141,10 @@ pub async fn create_full_screen_draw_window(
     full_screen_draw_window_labels: tauri::State<'_, Mutex<Option<FullScreenDrawWindowLabels>>>,
     hot_load_page_service: tauri::State<
         '_,
-        Arc<snow_shot_app_services::hot_load_page_service::HotLoadPageService>,
+        Arc<zmeng_app_services::hot_load_page_service::HotLoadPageService>,
     >,
 ) -> Result<(), String> {
-    snow_shot_tauri_commands_core::create_full_screen_draw_window(
+    zmeng_tauri_commands_core::create_full_screen_draw_window(
         app,
         full_screen_draw_window_labels,
         hot_load_page_service,
@@ -157,7 +157,7 @@ pub async fn close_full_screen_draw_window(
     app: tauri::AppHandle,
     full_screen_draw_window_labels: tauri::State<'_, Mutex<Option<FullScreenDrawWindowLabels>>>,
 ) -> Result<(), String> {
-    snow_shot_tauri_commands_core::close_full_screen_draw_window(
+    zmeng_tauri_commands_core::close_full_screen_draw_window(
         app,
         full_screen_draw_window_labels,
     )
@@ -165,9 +165,9 @@ pub async fn close_full_screen_draw_window(
 }
 
 #[command]
-pub async fn get_current_monitor_info() -> Result<snow_shot_tauri_commands_core::MonitorInfo, String>
+pub async fn get_current_monitor_info() -> Result<zmeng_tauri_commands_core::MonitorInfo, String>
 {
-    snow_shot_tauri_commands_core::get_current_monitor_info().await
+    zmeng_tauri_commands_core::get_current_monitor_info().await
 }
 
 #[command]
@@ -176,13 +176,13 @@ pub async fn get_monitors_bounding_box(
     region: Option<ElementRect>,
     enable_multiple_monitor: bool,
 ) -> Result<MonitorsBoundingBox, String> {
-    snow_shot_tauri_commands_core::get_monitors_bounding_box(&app, region, enable_multiple_monitor)
+    zmeng_tauri_commands_core::get_monitors_bounding_box(&app, region, enable_multiple_monitor)
         .await
 }
 
 #[command]
 pub async fn send_new_version_notification(title: String, body: String) {
-    snow_shot_tauri_commands_core::send_new_version_notification(title, body).await;
+    zmeng_tauri_commands_core::send_new_version_notification(title, body).await;
 }
 
 /// 创建屏幕录制窗口
@@ -192,14 +192,14 @@ pub async fn create_video_record_window(
     video_record_window_label: tauri::State<'_, Mutex<Option<VideoRecordWindowLabels>>>,
     hot_load_page_service: tauri::State<
         '_,
-        Arc<snow_shot_app_services::hot_load_page_service::HotLoadPageService>,
+        Arc<zmeng_app_services::hot_load_page_service::HotLoadPageService>,
     >,
     select_rect_min_x: i32,
     select_rect_min_y: i32,
     select_rect_max_x: i32,
     select_rect_max_y: i32,
 ) -> Result<(), String> {
-    snow_shot_tauri_commands_core::create_video_record_window(
+    zmeng_tauri_commands_core::create_video_record_window(
         app,
         video_record_window_label,
         hot_load_page_service,
@@ -217,14 +217,14 @@ pub async fn close_video_record_window(
     app: tauri::AppHandle,
     video_record_window_label: tauri::State<'_, Mutex<Option<VideoRecordWindowLabels>>>,
 ) -> Result<(), String> {
-    snow_shot_tauri_commands_core::close_video_record_window(app, video_record_window_label).await
+    zmeng_tauri_commands_core::close_video_record_window(app, video_record_window_label).await
 }
 
 #[command]
 pub async fn has_video_record_window(
     video_record_window_labels: tauri::State<'_, Mutex<Option<VideoRecordWindowLabels>>>,
 ) -> Result<bool, String> {
-    snow_shot_tauri_commands_core::has_video_record_window(video_record_window_labels).await
+    zmeng_tauri_commands_core::has_video_record_window(video_record_window_labels).await
 }
 
 #[command]
@@ -232,10 +232,10 @@ pub async fn start_free_drag(
     window: tauri::Window,
     free_drag_window_service: tauri::State<
         '_,
-        Mutex<snow_shot_app_services::free_drag_window_service::FreeDragWindowService>,
+        Mutex<zmeng_app_services::free_drag_window_service::FreeDragWindowService>,
     >,
 ) -> Result<(), String> {
-    snow_shot_tauri_commands_core::start_free_drag(window, free_drag_window_service).await
+    zmeng_tauri_commands_core::start_free_drag(window, free_drag_window_service).await
 }
 
 #[command]
@@ -243,14 +243,14 @@ pub async fn start_resize_window(
     window: tauri::Window,
     resize_window_service: tauri::State<
         '_,
-        Mutex<snow_shot_app_services::resize_window_service::ResizeWindowService>,
+        Mutex<zmeng_app_services::resize_window_service::ResizeWindowService>,
     >,
-    side: snow_shot_app_services::resize_window_service::ResizeWindowSide,
+    side: zmeng_app_services::resize_window_service::ResizeWindowSide,
     spect_ratio: f64,
     min_width: f64,
     max_width: f64,
 ) -> Result<(), String> {
-    snow_shot_tauri_commands_core::start_resize_window(
+    zmeng_tauri_commands_core::start_resize_window(
         window,
         resize_window_service,
         side,
@@ -266,7 +266,7 @@ pub async fn set_current_window_always_on_top(
     window: tauri::WebviewWindow,
     allow_input_method_overlay: bool,
 ) -> Result<(), String> {
-    snow_shot_tauri_commands_core::set_current_window_always_on_top(
+    zmeng_tauri_commands_core::set_current_window_always_on_top(
         window,
         allow_input_method_overlay,
     )
@@ -275,7 +275,7 @@ pub async fn set_current_window_always_on_top(
 
 #[command]
 pub async fn close_window_after_delay(window: tauri::Window, delay: u64) {
-    snow_shot_tauri_commands_core::close_window_after_delay(window, delay).await
+    zmeng_tauri_commands_core::close_window_after_delay(window, delay).await
 }
 
 #[command]
@@ -296,7 +296,7 @@ pub async fn auto_start_enable(app: tauri::AppHandle) -> Result<(), String> {
     #[cfg(target_os = "windows")]
     {
         // 判断是否是管理员模式
-        let is_admin = match snow_shot_tauri_commands_core::is_admin().await {
+        let is_admin = match zmeng_tauri_commands_core::is_admin().await {
             Ok(is_admin) => is_admin,
             Err(_) => return Err(String::from("[auto_start_enable] Failed to check if admin")),
         };
@@ -327,7 +327,7 @@ pub async fn auto_start_enable(app: tauri::AppHandle) -> Result<(), String> {
         }
 
         // 创建管理员自启动任务
-        match snow_shot_tauri_commands_core::create_admin_auto_start_task().await {
+        match zmeng_tauri_commands_core::create_admin_auto_start_task().await {
             Ok(_) => (),
             Err(e) => {
                 return Err(format!(
@@ -361,7 +361,7 @@ pub async fn auto_start_disable(app: tauri::AppHandle) -> Result<(), String> {
     #[cfg(target_os = "windows")]
     {
         // 判断是否是管理员模式
-        let is_admin = match snow_shot_tauri_commands_core::is_admin().await {
+        let is_admin = match zmeng_tauri_commands_core::is_admin().await {
             Ok(is_admin) => is_admin,
             Err(_) => {
                 return Err(String::from(
@@ -375,7 +375,7 @@ pub async fn auto_start_disable(app: tauri::AppHandle) -> Result<(), String> {
         }
 
         // 删除管理员自启动任务
-        match snow_shot_tauri_commands_core::delete_admin_auto_start_task().await {
+        match zmeng_tauri_commands_core::delete_admin_auto_start_task().await {
             Ok(_) => (),
             Err(e) => {
                 return Err(format!(
@@ -391,23 +391,23 @@ pub async fn auto_start_disable(app: tauri::AppHandle) -> Result<(), String> {
 
 #[command]
 pub async fn restart_with_admin() -> Result<(), String> {
-    snow_shot_tauri_commands_core::restart_with_admin().await
+    zmeng_tauri_commands_core::restart_with_admin().await
 }
 
 #[command]
 pub async fn write_bitmap_image_to_clipboard(
     request: tauri::ipc::Request<'_>,
 ) -> Result<(), String> {
-    snow_shot_tauri_commands_core::write_bitmap_image_to_clipboard(request).await
+    zmeng_tauri_commands_core::write_bitmap_image_to_clipboard(request).await
 }
 
 #[cfg(target_os = "windows")]
 #[command]
 pub async fn write_bitmap_image_to_clipboard_with_shared_buffer(
-    shared_buffer_service: tauri::State<'_, Arc<snow_shot_webview::SharedBufferService>>,
+    shared_buffer_service: tauri::State<'_, Arc<zmeng_webview::SharedBufferService>>,
     channel_id: String,
 ) -> Result<(), String> {
-    snow_shot_app_utils::write_bitmap_image_to_clipboard_with_shared_buffer(
+    zmeng_app_utils::write_bitmap_image_to_clipboard_with_shared_buffer(
         shared_buffer_service,
         channel_id,
     )
@@ -416,12 +416,12 @@ pub async fn write_bitmap_image_to_clipboard_with_shared_buffer(
 
 #[command]
 pub async fn retain_dir_files(dir_path: PathBuf, file_names: Vec<String>) -> Result<(), String> {
-    snow_shot_tauri_commands_core::retain_dir_files(dir_path, file_names).await
+    zmeng_tauri_commands_core::retain_dir_files(dir_path, file_names).await
 }
 
 #[command]
 pub async fn is_admin() -> Result<bool, String> {
-    snow_shot_tauri_commands_core::is_admin().await
+    zmeng_tauri_commands_core::is_admin().await
 }
 
 #[command]
@@ -436,17 +436,17 @@ pub async fn set_run_log(
 
 #[command]
 pub async fn set_exclude_from_capture(window: tauri::Window, enable: bool) -> Result<(), String> {
-    snow_shot_app_utils::set_exclude_from_capture(&window, enable).await
+    zmeng_app_utils::set_exclude_from_capture(&window, enable).await
 }
 
 #[cfg(target_os = "windows")]
 #[command]
 pub async fn write_image_pixels_to_clipboard_with_shared_buffer(
     app: tauri::AppHandle,
-    shared_buffer_service: tauri::State<'_, Arc<snow_shot_webview::SharedBufferService>>,
+    shared_buffer_service: tauri::State<'_, Arc<zmeng_webview::SharedBufferService>>,
     channel_id: String,
 ) -> Result<(), String> {
-    snow_shot_tauri_commands_core::write_image_pixels_to_clipboard_with_shared_buffer(
+    zmeng_tauri_commands_core::write_image_pixels_to_clipboard_with_shared_buffer(
         app,
         shared_buffer_service,
         channel_id,
@@ -456,12 +456,12 @@ pub async fn write_image_pixels_to_clipboard_with_shared_buffer(
 
 #[command]
 pub async fn has_focused_full_screen_window() -> Result<bool, String> {
-    snow_shot_tauri_commands_core::has_focused_full_screen_window().await
+    zmeng_tauri_commands_core::has_focused_full_screen_window().await
 }
 
 #[command]
 pub async fn show_main_window(app: tauri::AppHandle, auto_hide: bool) -> Result<(), String> {
-    snow_shot_tauri_commands_core::show_main_window(app, auto_hide).await
+    zmeng_tauri_commands_core::show_main_window(app, auto_hide).await
 }
 
 #[command]
@@ -522,8 +522,8 @@ pub struct ActiveWindowInfo {
 pub async fn get_active_window_info() -> Result<ActiveWindowInfo, String> {
     #[cfg(target_os = "windows")]
     {
-        let handle = snow_shot_app_os::utils::get_foreground_window_handle();
-        let title = snow_shot_app_os::utils::get_window_title(handle);
+        let handle = zmeng_app_os::utils::get_foreground_window_handle();
+        let title = zmeng_app_os::utils::get_window_title(handle);
         Ok(ActiveWindowInfo {
             handle: handle as i64,
             title,
@@ -546,9 +546,9 @@ pub async fn capture_foreground_window(
 ) -> Result<(), String> {
     #[cfg(target_os = "windows")]
     {
-        let handle = snow_shot_app_os::utils::get_foreground_window_handle();
+        let handle = zmeng_app_os::utils::get_foreground_window_handle();
         // 跳过 ZMENG 自身窗口，避免把自己记成粘贴目标（#11）
-        let pid = snow_shot_app_os::utils::get_window_pid(handle);
+        let pid = zmeng_app_os::utils::get_window_pid(handle);
         if handle != 0 && pid != 0 && pid != std::process::id() {
             if let Ok(mut guard) = foreground_window_handle.0.lock() {
                 *guard = handle as i64;
@@ -576,18 +576,18 @@ pub async fn paste_to_active_window(
         if handle != 0 {
             // 目标为管理员/高完整性窗口且本进程非管理员：注入会被 UIPI 丢弃，
             // 交回前端走「已复制，可手动 Ctrl+V」（手动按键不受 UIPI 限制）（#5）
-            if snow_shot_app_os::utils::is_window_paste_blocked(handle as isize) {
+            if zmeng_app_os::utils::is_window_paste_blocked(handle as isize) {
                 return Err("paste_blocked_elevated".to_string());
             }
             // 前台切换失败则不要盲目注入，避免粘到错误窗口（#4）
-            if !snow_shot_app_os::utils::set_foreground_window(handle as isize) {
+            if !zmeng_app_os::utils::set_foreground_window(handle as isize) {
                 return Err("paste_foreground_failed".to_string());
             }
             // 轮询确认目标窗口已真正处于前台（最长 500ms）再粘贴。
             // 此前固定等待 80ms，慢速窗口激活时焦点尚未切换完成，Ctrl+V 会落到别的窗口
             let mut foreground_ok = false;
             for _ in 0..25 {
-                if snow_shot_app_os::utils::get_foreground_window_handle() as i64 == handle {
+                if zmeng_app_os::utils::get_foreground_window_handle() as i64 == handle {
                     foreground_ok = true;
                     break;
                 }
@@ -612,13 +612,13 @@ pub async fn paste_to_active_window(
 /// 前端在写剪贴板前调用：登记自写时间戳，剪贴板监听侧据此跳过自己写入的内容。
 #[command]
 pub fn clipboard_self_write_mark() {
-    snow_shot_app_shared::mark_clipboard_self_write();
+    zmeng_app_shared::mark_clipboard_self_write();
 }
 
 /// 剪贴板监听侧调用：最近一次自写是否在有效窗口内（1500ms）。
 #[command]
 pub fn clipboard_self_write_recent() -> bool {
-    snow_shot_app_shared::is_clipboard_self_write_recent()
+    zmeng_app_shared::is_clipboard_self_write_recent()
 }
 
 // ===================== ZMENG AI：本地/直连 HTTP 请求 =====================

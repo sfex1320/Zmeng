@@ -82,11 +82,11 @@ const KeyEventHandleCore: React.FC<{
 
 	// 多屏修复：提示挂到无 transform 的外层容器。此前挂 .draw-toolbar（带拖拽
 	// transform + 缩放），antd 对 transform 祖先的定位计算会偏移到另一块屏幕
-	const { drawToolbarRef, popupContainerRef } = useContext(DrawToolbarContext);
-	// 挂 fixed 专用容器：无 transform（定位准）且 pointer-events 可交互（可悬停）
+	// 挂触发按钮的父元素：定位以按钮为锚点，多屏/混合 DPI/缩放下天然正确，
+	// 且弹层与按钮 DOM 相邻、hover 稳定（共享容器方案在副屏会偏移到主屏）
 	const getPopupContainer = useCallback(
-		() => popupContainerRef.current ?? drawToolbarRef.current ?? document.body,
-		[popupContainerRef, drawToolbarRef],
+		(triggerNode: HTMLElement) => triggerNode.parentElement ?? document.body,
+		[],
 	);
 
 	return (

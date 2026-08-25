@@ -11,28 +11,28 @@ pub mod scroll_screenshot;
 pub mod video_record;
 pub mod webview;
 
-use snow_shot_app_services::listen_mouse_service;
-use snow_shot_tauri_commands_core::{FullScreenDrawWindowLabels, VideoRecordWindowLabels};
+use zmeng_app_services::listen_mouse_service;
+use zmeng_tauri_commands_core::{FullScreenDrawWindowLabels, VideoRecordWindowLabels};
 use std::sync::Arc;
 use tauri::Emitter;
 use tokio::sync::Mutex;
 
 use tauri::Manager;
 
-use snow_shot_app_os::ui_automation::UIElements;
-use snow_shot_app_scroll_screenshot_service::scroll_screenshot_capture_service;
-use snow_shot_app_scroll_screenshot_service::scroll_screenshot_image_service;
-use snow_shot_app_scroll_screenshot_service::scroll_screenshot_service;
-use snow_shot_app_services::file_cache_service;
-use snow_shot_app_services::free_drag_window_service;
-use snow_shot_app_services::hot_load_page_service;
-use snow_shot_app_services::listen_key_service;
-use snow_shot_app_services::ocr_service::OcrService;
-use snow_shot_app_services::resize_window_service;
-use snow_shot_app_services::video_record_service;
-use snow_shot_app_shared::EnigoManager;
-use snow_shot_global_state::{CaptureState, ReadClipboardState, WebViewSharedBufferState};
-use snow_shot_plugin_service::plugin_service;
+use zmeng_app_os::ui_automation::UIElements;
+use zmeng_app_scroll_screenshot_service::scroll_screenshot_capture_service;
+use zmeng_app_scroll_screenshot_service::scroll_screenshot_image_service;
+use zmeng_app_scroll_screenshot_service::scroll_screenshot_service;
+use zmeng_app_services::file_cache_service;
+use zmeng_app_services::free_drag_window_service;
+use zmeng_app_services::hot_load_page_service;
+use zmeng_app_services::listen_key_service;
+use zmeng_app_services::ocr_service::OcrService;
+use zmeng_app_services::resize_window_service;
+use zmeng_app_services::video_record_service;
+use zmeng_app_shared::EnigoManager;
+use zmeng_global_state::{CaptureState, ReadClipboardState, WebViewSharedBufferState};
+use zmeng_plugin_service::plugin_service;
 
 #[cfg(feature = "dhat-heap")]
 pub static PROFILER: std::sync::LazyLock<Mutex<Option<dhat::Profiler>>> =
@@ -136,7 +136,7 @@ fn build_and_run_app(is_first_attempt: bool) -> AppRunOutcome {
     // 尽早设置进程 Per-Monitor-V2 DPI 感知：高分屏(4K)+ 系统缩放下，若进程未 DPI 感知会被系统
     // 虚拟化，导致全屏截图只截到缩小后的低分辨率（如 4K→1280）且模糊。必须在创建窗口前调用。
     #[cfg(target_os = "windows")]
-    snow_shot_app_os::utils::set_process_per_monitor_dpi_aware();
+    zmeng_app_os::utils::set_process_per_monitor_dpi_aware();
 
     let ocr_instance = Mutex::new(OcrService::new());
     let video_record_service = Mutex::new(video_record_service::VideoRecordService::new());
@@ -152,7 +152,7 @@ fn build_and_run_app(is_first_attempt: bool) -> AppRunOutcome {
     let scroll_screenshot_capture_service =
         Mutex::new(scroll_screenshot_capture_service::ScrollScreenshotCaptureService::new());
     #[cfg(target_os = "windows")]
-    let shared_buffer_service = Arc::new(snow_shot_webview::SharedBufferService::new());
+    let shared_buffer_service = Arc::new(zmeng_webview::SharedBufferService::new());
 
     let free_drag_window_service =
         Mutex::new(free_drag_window_service::FreeDragWindowService::new());
@@ -271,7 +271,7 @@ fn build_and_run_app(is_first_attempt: bool) -> AppRunOutcome {
         .setup(|app| {
             // ZMENG: 便携版首次启动自动在桌面创建快捷方式（已存在则跳过）。COM 已由 Tauri 初始化。
             #[cfg(target_os = "windows")]
-            snow_shot_app_os::utils::create_desktop_shortcut_if_portable();
+            zmeng_app_os::utils::create_desktop_shortcut_if_portable();
 
             let main_window = app
                 .get_webview_window("main")

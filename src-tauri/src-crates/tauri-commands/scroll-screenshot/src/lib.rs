@@ -1,19 +1,19 @@
 use image::codecs::png::{self, CompressionType, PngEncoder};
 use image::imageops::FilterType;
 use serde::Serialize;
-use snow_shot_app_scroll_screenshot_service::scroll_screenshot_capture_service::ScrollScreenshotCaptureService;
-use snow_shot_app_shared::ElementRect;
-use snow_shot_app_utils::monitor_info::{CaptureOption, ColorFormat, CorrectHdrColorAlgorithm};
-use snow_shot_global_state::WebViewSharedBufferState;
+use zmeng_app_scroll_screenshot_service::scroll_screenshot_capture_service::ScrollScreenshotCaptureService;
+use zmeng_app_shared::ElementRect;
+use zmeng_app_utils::monitor_info::{CaptureOption, ColorFormat, CorrectHdrColorAlgorithm};
+use zmeng_global_state::WebViewSharedBufferState;
 use std::path::PathBuf;
 use tauri::ipc::Response;
 use tokio::sync::Mutex;
 
-use snow_shot_app_scroll_screenshot_service::scroll_screenshot_image_service::ScrollScreenshotImageService;
-use snow_shot_app_scroll_screenshot_service::scroll_screenshot_service::{
+use zmeng_app_scroll_screenshot_service::scroll_screenshot_image_service::ScrollScreenshotImageService;
+use zmeng_app_scroll_screenshot_service::scroll_screenshot_service::{
     ScrollDirection, ScrollImageList, ScrollScreenshotService,
 };
-use snow_shot_app_utils::{self, save_image_to_file};
+use zmeng_app_utils::{self, save_image_to_file};
 
 pub async fn scroll_screenshot_init(
     scroll_screenshot_service: tauri::State<'_, Mutex<ScrollScreenshotService>>,
@@ -316,7 +316,7 @@ pub async fn scroll_screenshot_get_image_data(
                 );
             }
 
-            snow_shot_webview::create_shared_buffer(
+            zmeng_webview::create_shared_buffer(
                 webview,
                 image_data.as_bytes(),
                 &extra_data,

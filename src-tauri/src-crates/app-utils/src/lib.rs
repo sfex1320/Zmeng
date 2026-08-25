@@ -11,7 +11,7 @@ use image::codecs::jpeg::JpegEncoder;
 use image::codecs::png::{CompressionType, FilterType, PngEncoder};
 use image::codecs::webp::WebPEncoder;
 use image::{DynamicImage, GenericImageView};
-use snow_shot_app_shared::ElementRect;
+use zmeng_app_shared::ElementRect;
 use tauri::AppHandle;
 #[cfg(target_os = "macos")]
 use xcap::Monitor;
@@ -740,7 +740,7 @@ pub async fn write_bitmap_image_to_clipboard_core(
         use std::mem;
 
         // 自写剪贴板前登记标记，剪贴板侧栏监听据此跳过，避免产生重复记录
-        snow_shot_app_shared::mark_clipboard_self_write();
+        zmeng_app_shared::mark_clipboard_self_write();
 
         // 计算 DIB 数据大小：BITMAPINFOHEADER + 像素数据
         let header_size = mem::size_of::<BITMAPINFOHEADER>();
@@ -865,7 +865,7 @@ pub async fn write_bitmap_image_to_clipboard(
 
 #[cfg(target_os = "windows")]
 pub async fn write_bitmap_image_to_clipboard_with_shared_buffer(
-    shared_buffer_service: tauri::State<'_, std::sync::Arc<snow_shot_webview::SharedBufferService>>,
+    shared_buffer_service: tauri::State<'_, std::sync::Arc<zmeng_webview::SharedBufferService>>,
     channel_id: String,
 ) -> Result<(), String> {
     let image_data = match shared_buffer_service.receive_data(channel_id) {

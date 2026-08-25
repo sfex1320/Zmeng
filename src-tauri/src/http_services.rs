@@ -1,4 +1,4 @@
-use snow_shot_app_utils::{
+use zmeng_app_utils::{
     get_request_bool_header, get_request_optional_string_header, get_request_string_header,
 };
 use tauri::command;
@@ -22,7 +22,7 @@ pub async fn upload_to_s3(request: tauri::ipc::Request<'_>) -> Result<String, St
     let content_type: Option<String> =
         get_request_optional_string_header(&request, "x-content-type")?;
 
-    snow_shot_tauri_commands_http_service::upload_to_s3(
+    zmeng_tauri_commands_http_service::upload_to_s3(
         endpoint,
         region,
         access_key_id,

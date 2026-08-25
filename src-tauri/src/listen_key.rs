@@ -1,7 +1,7 @@
 use tauri::{AppHandle, Window, command};
 
-use snow_shot_app_services::listen_key_service::ListenKeyService;
-use snow_shot_app_services::listen_mouse_service::ListenMouseService;
+use zmeng_app_services::listen_key_service::ListenKeyService;
+use zmeng_app_services::listen_mouse_service::ListenMouseService;
 use tokio::sync::Mutex;
 
 #[command]
