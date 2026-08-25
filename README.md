@@ -71,5 +71,11 @@ ZMENG 追求简单高效的使用体验，希望每个用户都能依照直觉�
 
 ## 文档
 
-- [官方网站](https://snowshot.top/index.html)
 - [开发文档](/docs/development.md)
+
+## 开源声明与法律说明
+
+本项目（ZMENG）基于开源项目 [snow-shot](https://github.com/mg-chao/snow-shot)（作者 mg-chao）二次开发，遵循其 **GPL-3.0** 许可证发布，感谢原作者的开源贡献。
+
+- 本仓库整体按 GPL-3.0 开源，分发时须附带源码与许可证全文
+- 详细的权利义务、风险清单与第三方组件许可说明见 [NOTICE.md](./NOTICE.md)

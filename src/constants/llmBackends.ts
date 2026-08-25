@@ -6,8 +6,8 @@ import type { ChatApiConfig } from "@/types/appSettings";
  * 翻译与剪贴板 AI 默认走 MiniMax-M2（便宜、快）；视觉走本地 Ollama qwen3-vl（见默认用途分配）。
  */
 export const MOMO_API_URI = "https://ai.jinpengi.site:8687/v1";
-export const MOMO_API_KEY =
-	"REMOVED-LEAKED-KEY";
+// 出库不含任何密钥：默认 Key 为空，用户在「设置 · 大模型」里填自己的中转站 Key
+export const MOMO_API_KEY = "";
 export const MOMO_DEFAULT_MODEL = "MiniMax-M2";
 
 export const momoBackendPreset: ChatApiConfig = {
