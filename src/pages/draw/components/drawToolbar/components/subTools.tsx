@@ -13,6 +13,7 @@ import { DrawContext } from "@/pages/draw/types";
 import { zIndexs } from "@/utils/zIndex";
 import { useMonitorRect } from "../../statusBar";
 import { useDragElement } from "./dragButton";
+import { ToolbarTooltip } from "./toolbarTooltip";
 
 export type SubToolsActionType = {
 	getSubToolContainer: () => HTMLDivElement | null;
@@ -159,13 +160,11 @@ export const SubTools: React.FC<{
 			onDoubleClick={onDoubleClick}
 		>
 			<div className="sub-tools" ref={subToolsRef}>
-				<div
-					className="drag-button"
-					title={dragTitle}
-					onMouseDown={handleMouseDown}
-				>
-					<HolderOutlined />
-				</div>
+				<ToolbarTooltip title={dragTitle}>
+					<div className="drag-button" onMouseDown={handleMouseDown}>
+						<HolderOutlined />
+					</div>
+				</ToolbarTooltip>
 				<Flex
 					align="center"
 					gap={token.paddingXS}

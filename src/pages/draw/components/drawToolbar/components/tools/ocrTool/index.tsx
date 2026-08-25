@@ -2,10 +2,12 @@ import { Button } from "antd";
 import { useCallback, useState } from "react";
 import { useIntl } from "react-intl";
 import { DrawStatePublisher } from "@/components/drawCore/extra";
-import { ZmengOcrTranslateIcon, ZmengVisionHtmlIcon, ZmengVisionMarkdownIcon } from "@/components/zmengIcons";
 import {
-	PLUGIN_ID_TRANSLATE,
-} from "@/constants/pluginService";
+	ZmengOcrTranslateIcon,
+	ZmengVisionHtmlIcon,
+	ZmengVisionMarkdownIcon,
+} from "@/components/zmengIcons";
+import { PLUGIN_ID_TRANSLATE } from "@/constants/pluginService";
 import { usePluginServiceContext } from "@/contexts/pluginServiceContext";
 import { useStateSubscriber } from "@/hooks/useStateSubscriber";
 import {
@@ -14,6 +16,7 @@ import {
 } from "@/pages/fixedContent/components/ocrResult";
 import { DrawState } from "@/types/draw";
 import { SubTools } from "../../subTools";
+import { ToolbarTooltip } from "../../toolbarTooltip";
 import { OcrToolModalSettings } from "./components/ocrToolModalSettings";
 
 export const isOcrTool = (drawState: DrawState) => {
@@ -77,90 +80,104 @@ const OcrTool: React.FC<{
 			buttons={[
 				...(isReadyStatus?.(PLUGIN_ID_TRANSLATE)
 					? [
-							<Button
-								disabled={!currentOcrResult}
-								loading={translateLoading}
-								onClick={() => {
-									if (ocrResult) {
-										if (translatedOcrResult) {
-											onSwitchOcrResult(
-												currentOcrResult?.ocrResultType ===
-													OcrResultType.Translated
-													? OcrResultType.Ocr
-													: OcrResultType.Translated,
-											);
-										} else {
-											onTranslate();
-										}
-									}
-								}}
-								type={
-									currentOcrResult?.ocrResultType === OcrResultType.Translated
-										? "primary"
-										: "text"
-								}
-								icon={<ZmengOcrTranslateIcon />}
+							<ToolbarTooltip
 								title={intl.formatMessage({ id: "draw.ocrDetect.translate" })}
 								key="translate"
-							/>,
+							>
+								<Button
+									disabled={!currentOcrResult}
+									loading={translateLoading}
+									onClick={() => {
+										if (ocrResult) {
+											if (translatedOcrResult) {
+												onSwitchOcrResult(
+													currentOcrResult?.ocrResultType ===
+														OcrResultType.Translated
+														? OcrResultType.Ocr
+														: OcrResultType.Translated,
+												);
+											} else {
+												onTranslate();
+											}
+										}
+									}}
+									type={
+										currentOcrResult?.ocrResultType === OcrResultType.Translated
+											? "primary"
+											: "text"
+									}
+									icon={<ZmengOcrTranslateIcon />}
+									aria-label={intl.formatMessage({
+										id: "draw.ocrDetect.translate",
+									})}
+								/>
+							</ToolbarTooltip>,
 						]
 					: []),
-				...(/* 视觉模型已改为用户自配后端，不再依赖插件就绪 */ true
-					? [
-							<Button
-								loading={visionModelHtmlLoading}
-								onClick={() => {
-									if (visionModelHtmlResult) {
-										onSwitchOcrResult(
-											currentOcrResult?.ocrResultType ===
-												OcrResultType.VisionModelHtml
-												? OcrResultType.Ocr
-												: OcrResultType.VisionModelHtml,
-										);
-									} else {
-										onConvertImageToHtml();
-									}
-								}}
-								type={
+				// 视觉模型已改为用户自配后端，不再依赖插件就绪
+				<ToolbarTooltip
+					title={intl.formatMessage({
+						id: "draw.ocrDetect.visionModelHtml",
+					})}
+					key="visionModelHtml"
+				>
+					<Button
+						loading={visionModelHtmlLoading}
+						onClick={() => {
+							if (visionModelHtmlResult) {
+								onSwitchOcrResult(
 									currentOcrResult?.ocrResultType ===
-									OcrResultType.VisionModelHtml
-										? "primary"
-										: "text"
-								}
-								icon={<ZmengVisionHtmlIcon />}
-								title={intl.formatMessage({
-									id: "draw.ocrDetect.visionModelHtml",
-								})}
-								key="visionModelHtml"
-							/>,
-							<Button
-								loading={visionModelMarkdownLoading}
-								onClick={() => {
-									if (visionModelMarkdownResult) {
-										onSwitchOcrResult(
-											currentOcrResult?.ocrResultType ===
-												OcrResultType.VisionModelMarkdown
-												? OcrResultType.Ocr
-												: OcrResultType.VisionModelMarkdown,
-										);
-									} else {
-										onConvertImageToMarkdown();
-									}
-								}}
-								type={
+										OcrResultType.VisionModelHtml
+										? OcrResultType.Ocr
+										: OcrResultType.VisionModelHtml,
+								);
+							} else {
+								onConvertImageToHtml();
+							}
+						}}
+						type={
+							currentOcrResult?.ocrResultType === OcrResultType.VisionModelHtml
+								? "primary"
+								: "text"
+						}
+						icon={<ZmengVisionHtmlIcon />}
+						aria-label={intl.formatMessage({
+							id: "draw.ocrDetect.visionModelHtml",
+						})}
+					/>
+				</ToolbarTooltip>,
+				<ToolbarTooltip
+					title={intl.formatMessage({
+						id: "draw.ocrDetect.visionModelMarkdown",
+					})}
+					key="visionModelMarkdown"
+				>
+					<Button
+						loading={visionModelMarkdownLoading}
+						onClick={() => {
+							if (visionModelMarkdownResult) {
+								onSwitchOcrResult(
 									currentOcrResult?.ocrResultType ===
-									OcrResultType.VisionModelMarkdown
-										? "primary"
-										: "text"
-								}
-								icon={<ZmengVisionMarkdownIcon />}
-								title={intl.formatMessage({
-									id: "draw.ocrDetect.visionModelMarkdown",
-								})}
-								key="visionModelMarkdown"
-							/>,
-						]
-					: []),
+										OcrResultType.VisionModelMarkdown
+										? OcrResultType.Ocr
+										: OcrResultType.VisionModelMarkdown,
+								);
+							} else {
+								onConvertImageToMarkdown();
+							}
+						}}
+						type={
+							currentOcrResult?.ocrResultType ===
+							OcrResultType.VisionModelMarkdown
+								? "primary"
+								: "text"
+						}
+						icon={<ZmengVisionMarkdownIcon />}
+						aria-label={intl.formatMessage({
+							id: "draw.ocrDetect.visionModelMarkdown",
+						})}
+					/>
+				</ToolbarTooltip>,
 				<OcrToolModalSettings
 					key="ocrToolModalSettings"
 					onFinish={async () => {

@@ -14,6 +14,7 @@ import { DrawToolbarKeyEventKey } from "@/types/components/drawToolbar";
 import { DrawState } from "@/types/draw";
 import { getButtonTypeByState } from "../../../extra";
 import { ToolButton } from "../../toolButton";
+import { ToolbarTooltip } from "../../toolbarTooltip";
 
 const ArrowToolCore: React.FC<{
 	customToolbarToolHiddenMap: Partial<Record<DrawState, boolean>> | undefined;
@@ -80,18 +81,20 @@ const ArrowToolCore: React.FC<{
 	]);
 
 	const lineButton = useMemo(() => {
+		const title = intl.formatMessage({ id: "draw.lineTool" });
 		return (
-			<Button
-				icon={<ZmengLineIcon style={{ fontSize: "1.15em", height: "1em" }} />}
-				title={intl.formatMessage({ id: "draw.lineTool" })}
-				type={getButtonTypeByState(drawState === DrawState.Line)}
-				key="line"
-				onClick={() => {
-					onToolClickAction(DrawState.Line);
-					updateLastArrowTool(DrawState.Line);
-				}}
-				disabled={disable}
-			/>
+			<ToolbarTooltip title={title} key="line">
+				<Button
+					icon={<ZmengLineIcon style={{ fontSize: "1.15em", height: "1em" }} />}
+					aria-label={title}
+					type={getButtonTypeByState(drawState === DrawState.Line)}
+					onClick={() => {
+						onToolClickAction(DrawState.Line);
+						updateLastArrowTool(DrawState.Line);
+					}}
+					disabled={disable}
+				/>
+			</ToolbarTooltip>
 		);
 	}, [disable, drawState, intl, onToolClickAction, updateLastArrowTool]);
 

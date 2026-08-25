@@ -48,6 +48,7 @@ import { appError, appWarn } from "@/utils/log";
 import { getPlatform } from "@/utils/platform";
 import { zIndexs } from "@/utils/zIndex";
 import { SubTools, type SubToolsActionType } from "../../subTools";
+import { ToolbarTooltip } from "../../toolbarTooltip";
 
 const THUMBNAIL_WIDTH = 128;
 
@@ -721,23 +722,29 @@ export const ScrollScreenshot: React.FC<{
 			<SubTools
 				actionRef={subToolsActionRef}
 				buttons={[
-					<Button
-						disabled={loading}
-						onClick={() => {
-							if (scrollDirectionRef.current === ScrollDirection.Horizontal) {
-								setScrollDirection(ScrollDirection.Vertical);
-							} else {
-								setScrollDirection(ScrollDirection.Horizontal);
-							}
-							startCapture();
-						}}
-						icon={<ZmengRotateIcon />}
+					<ToolbarTooltip
 						title={intl.formatMessage({
 							id: "draw.scrollScreenshot.changeDirection",
 						})}
-						type={"text"}
 						key="rotate"
-					/>,
+					>
+						<Button
+							disabled={loading}
+							onClick={() => {
+								if (scrollDirectionRef.current === ScrollDirection.Horizontal) {
+									setScrollDirection(ScrollDirection.Vertical);
+								} else {
+									setScrollDirection(ScrollDirection.Horizontal);
+								}
+								startCapture();
+							}}
+							icon={<ZmengRotateIcon />}
+							aria-label={intl.formatMessage({
+								id: "draw.scrollScreenshot.changeDirection",
+							})}
+							type={"text"}
+						/>
+					</ToolbarTooltip>,
 				]}
 			/>
 

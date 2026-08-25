@@ -14,6 +14,7 @@ import { DrawState } from "@/types/draw";
 import { getButtonTypeByState } from "../../../extra";
 import { ToolButton } from "../../toolButton";
 import { ToolbarPopover } from "../../toolbarPopover";
+import { ToolbarTooltip } from "../../toolbarTooltip";
 
 const RectToolCore: React.FC<{
 	customToolbarToolHiddenMap: Partial<Record<DrawState, boolean>> | undefined;
@@ -78,18 +79,20 @@ const RectToolCore: React.FC<{
 	]);
 
 	const diamondButton = useMemo(() => {
+		const title = intl.formatMessage({ id: "draw.diamondTool" });
 		return (
-			<Button
-				icon={<ZmengDiamondIcon />}
-				title={intl.formatMessage({ id: "draw.diamondTool" })}
-				type={getButtonTypeByState(drawState === DrawState.Diamond)}
-				key="diamond"
-				onClick={() => {
-					onToolClickAction(DrawState.Diamond);
-					updateLastRectTool(DrawState.Diamond);
-				}}
-				disabled={disable}
-			/>
+			<ToolbarTooltip title={title} key="diamond">
+				<Button
+					icon={<ZmengDiamondIcon />}
+					aria-label={title}
+					type={getButtonTypeByState(drawState === DrawState.Diamond)}
+					onClick={() => {
+						onToolClickAction(DrawState.Diamond);
+						updateLastRectTool(DrawState.Diamond);
+					}}
+					disabled={disable}
+				/>
+			</ToolbarTooltip>
 		);
 	}, [disable, drawState, intl, onToolClickAction, updateLastRectTool]);
 

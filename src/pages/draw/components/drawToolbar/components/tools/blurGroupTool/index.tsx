@@ -2,7 +2,10 @@ import { Button, Flex, theme } from "antd";
 import React, { useCallback, useContext, useMemo, useState } from "react";
 import { useIntl } from "react-intl";
 import { DrawStatePublisher } from "@/components/drawCore/extra";
-import { ZmengFilterFreeDrawIcon, ZmengFilterIcon } from "@/components/zmengIcons";
+import {
+	ZmengFilterFreeDrawIcon,
+	ZmengFilterIcon,
+} from "@/components/zmengIcons";
 import {
 	AppSettingsActionContext,
 	AppSettingsPublisher,
@@ -14,6 +17,7 @@ import { DrawToolbarKeyEventKey } from "@/types/components/drawToolbar";
 import { DrawState } from "@/types/draw";
 import { getButtonTypeByState } from "../../../extra";
 import { ToolButton } from "../../toolButton";
+import { ToolbarTooltip } from "../../toolbarTooltip";
 
 const BlurGroupToolCore: React.FC<{
 	customToolbarToolHiddenMap: Partial<Record<DrawState, boolean>> | undefined;
@@ -78,18 +82,20 @@ const BlurGroupToolCore: React.FC<{
 	]);
 
 	const blurFreeDrawButton = useMemo(() => {
+		const title = intl.formatMessage({ id: "draw.blurFreeDrawTool" });
 		return (
-			<Button
-				icon={<ZmengFilterFreeDrawIcon style={{ fontSize: "1em" }} />}
-				title={intl.formatMessage({ id: "draw.blurFreeDrawTool" })}
-				type={getButtonTypeByState(drawState === DrawState.BlurFreeDraw)}
-				key="blurFreeDraw"
-				onClick={() => {
-					onToolClickAction(DrawState.BlurFreeDraw);
-					updateLastBlurTool(DrawState.BlurFreeDraw);
-				}}
-				disabled={disable}
-			/>
+			<ToolbarTooltip title={title} key="blurFreeDraw">
+				<Button
+					icon={<ZmengFilterFreeDrawIcon style={{ fontSize: "1em" }} />}
+					aria-label={title}
+					type={getButtonTypeByState(drawState === DrawState.BlurFreeDraw)}
+					onClick={() => {
+						onToolClickAction(DrawState.BlurFreeDraw);
+						updateLastBlurTool(DrawState.BlurFreeDraw);
+					}}
+					disabled={disable}
+				/>
+			</ToolbarTooltip>
 		);
 	}, [disable, drawState, intl, onToolClickAction, updateLastBlurTool]);
 

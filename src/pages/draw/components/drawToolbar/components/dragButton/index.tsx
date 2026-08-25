@@ -19,6 +19,7 @@ import type { DrawState } from "@/types/draw";
 import { MousePosition } from "@/utils/mousePosition";
 import { useMonitorRect } from "../../../statusBar";
 import { DrawToolbarContext, isEnableSubToolbar } from "../../extra";
+import { ToolbarTooltip } from "../toolbarTooltip";
 import {
 	type UpdateElementPositionResult,
 	updateElementPosition,
@@ -615,13 +616,14 @@ const DragButtonCore: React.FC<{
 	}, [intl]);
 
 	return (
-		<div
-			className="draw-toolbar-drag drag-button"
-			title={dragTitle}
-			onMouseDown={handleMouseDown}
-		>
-			<HolderOutlined />
-		</div>
+		<ToolbarTooltip title={dragTitle}>
+			<div
+				className="draw-toolbar-drag drag-button"
+				onMouseDown={handleMouseDown}
+			>
+				<HolderOutlined />
+			</div>
+		</ToolbarTooltip>
 	);
 };
 

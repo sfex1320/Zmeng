@@ -4,7 +4,10 @@ import { Button, Flex, theme } from "antd";
 import { useCallback, useContext, useMemo, useState } from "react";
 import { useIntl } from "react-intl";
 import { DrawStatePublisher } from "@/components/drawCore/extra";
-import { ZmengHighlightIcon, ZmengWatermarkIcon } from "@/components/zmengIcons";
+import {
+	ZmengHighlightIcon,
+	ZmengWatermarkIcon,
+} from "@/components/zmengIcons";
 import {
 	AppSettingsActionContext,
 	AppSettingsPublisher,
@@ -14,6 +17,7 @@ import { ToolbarPopover } from "@/pages/draw/components/drawToolbar/components/t
 import { type AppSettingsData, AppSettingsGroup } from "@/types/appSettings";
 import { DrawState } from "@/types/draw";
 import { getButtonTypeByState } from "../../../extra";
+import { ToolbarTooltip } from "../../toolbarTooltip";
 import { WatermarkTool } from "./components/watermarkTool";
 
 export const DrawExtraTool: React.FC<{
@@ -59,34 +63,38 @@ export const DrawExtraTool: React.FC<{
 	);
 
 	const watermarkButton = useMemo(() => {
+		const title = intl.formatMessage({ id: "draw.watermarkTool" });
 		return (
-			<Button
-				icon={<ZmengWatermarkIcon />}
-				title={intl.formatMessage({ id: "draw.watermarkTool" })}
-				type={getButtonTypeByState(drawState === DrawState.Watermark)}
-				key="watermark"
-				onClick={() => {
-					onToolClickAction(DrawState.Watermark);
-					updateLastDrawExtraTool(DrawState.Watermark);
-				}}
-				disabled={disable}
-			/>
+			<ToolbarTooltip title={title} key="watermark">
+				<Button
+					icon={<ZmengWatermarkIcon />}
+					aria-label={title}
+					type={getButtonTypeByState(drawState === DrawState.Watermark)}
+					onClick={() => {
+						onToolClickAction(DrawState.Watermark);
+						updateLastDrawExtraTool(DrawState.Watermark);
+					}}
+					disabled={disable}
+				/>
+			</ToolbarTooltip>
 		);
 	}, [disable, drawState, intl, onToolClickAction, updateLastDrawExtraTool]);
 
 	const highlightButton = useMemo(() => {
+		const title = intl.formatMessage({ id: "draw.highlightTool" });
 		return (
-			<Button
-				icon={<ZmengHighlightIcon />}
-				title={intl.formatMessage({ id: "draw.highlightTool" })}
-				type={getButtonTypeByState(drawState === DrawState.Highlight)}
-				key="highlight"
-				onClick={() => {
-					onToolClickAction(DrawState.Highlight);
-					updateLastDrawExtraTool(DrawState.Highlight);
-				}}
-				disabled={disable}
-			/>
+			<ToolbarTooltip title={title} key="highlight">
+				<Button
+					icon={<ZmengHighlightIcon />}
+					aria-label={title}
+					type={getButtonTypeByState(drawState === DrawState.Highlight)}
+					onClick={() => {
+						onToolClickAction(DrawState.Highlight);
+						updateLastDrawExtraTool(DrawState.Highlight);
+					}}
+					disabled={disable}
+				/>
+			</ToolbarTooltip>
 		);
 	}, [disable, drawState, intl, onToolClickAction, updateLastDrawExtraTool]);
 

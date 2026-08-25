@@ -1,10 +1,9 @@
-import { ZmengScanIcon } from "@/components/zmengIcons";
 import { Button, Flex, message, theme } from "antd";
 import { useCallback, useContext, useState } from "react";
 import { useIntl } from "react-intl";
 import { createVideoRecordWindow } from "@/commands/core";
 import { DrawStatePublisher } from "@/components/drawCore/extra";
-import { ZmengVideoRecordIcon } from "@/components/zmengIcons";
+import { ZmengScanIcon, ZmengVideoRecordIcon } from "@/components/zmengIcons";
 import { PLUGIN_ID_FFMPEG } from "@/constants/pluginService";
 import {
 	AppSettingsActionContext,
@@ -22,6 +21,7 @@ import { DrawState } from "@/types/draw";
 import { getPlatform } from "@/utils/platform";
 import { getButtonTypeByState } from "../../../extra";
 import { ToolbarPopover } from "../../toolbarPopover";
+import { ToolbarTooltip } from "../../toolbarTooltip";
 
 export const ExtraTool: React.FC<{
 	onToolClickAction: (tool: DrawState) => void;
@@ -129,30 +129,38 @@ export const ExtraTool: React.FC<{
 		),
 	);
 
+	const scanQrcodeTitle = intl.formatMessage({
+		id: "draw.extraTool.scanQrcode",
+	});
 	const scanQrcodeButton = (
-		<Button
-			icon={<ZmengScanIcon />}
-			title={intl.formatMessage({ id: "draw.extraTool.scanQrcode" })}
-			type={getButtonTypeByState(activeTool === ExtraToolList.ScanQrcode)}
-			key="scanQrcode"
-			onClick={() => {
-				onToolClickAction(DrawState.ScanQrcode);
-			}}
-			disabled={disable}
-		/>
+		<ToolbarTooltip title={scanQrcodeTitle} key="scanQrcode">
+			<Button
+				icon={<ZmengScanIcon />}
+				aria-label={scanQrcodeTitle}
+				type={getButtonTypeByState(activeTool === ExtraToolList.ScanQrcode)}
+				onClick={() => {
+					onToolClickAction(DrawState.ScanQrcode);
+				}}
+				disabled={disable}
+			/>
+		</ToolbarTooltip>
 	);
 
+	const videoRecordTitle = intl.formatMessage({
+		id: "draw.extraTool.videoRecord",
+	});
 	const videoRecordButton = (
-		<Button
-			icon={<ZmengVideoRecordIcon />}
-			title={intl.formatMessage({ id: "draw.extraTool.videoRecord" })}
-			type={getButtonTypeByState(activeTool === ExtraToolList.VideoRecord)}
-			key="videoRecord"
-			onClick={() => {
-				onToolClickAction(DrawState.VideoRecord);
-			}}
-			disabled={disable}
-		/>
+		<ToolbarTooltip title={videoRecordTitle} key="videoRecord">
+			<Button
+				icon={<ZmengVideoRecordIcon />}
+				aria-label={videoRecordTitle}
+				type={getButtonTypeByState(activeTool === ExtraToolList.VideoRecord)}
+				onClick={() => {
+					onToolClickAction(DrawState.VideoRecord);
+				}}
+				disabled={disable}
+			/>
+		</ToolbarTooltip>
 	);
 
 	const { isReadyStatus } = usePluginServiceContext();

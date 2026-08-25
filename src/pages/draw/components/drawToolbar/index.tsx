@@ -1,7 +1,11 @@
 "use client";
 
 import { CloseOutlined } from "@ant-design/icons";
-import { ZmengClipboardIcon, ZmengLockIcon, ZmengMoveIcon } from "@/components/zmengIcons";
+import {
+	ZmengClipboardIcon,
+	ZmengLockIcon,
+	ZmengMoveIcon,
+} from "@/components/zmengIcons";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Flex, theme } from "antd";
 import { debounce } from "es-toolkit";
@@ -19,7 +23,21 @@ import {
 	type ExcalidrawEventParams,
 	ExcalidrawEventPublisher,
 } from "@/components/drawCore/extra";
-import { ZmengEllipseIcon, ZmengEraserIcon, ZmengFastSaveIcon, ZmengFixedIcon, ZmengOcrDetectIcon, ZmengOcrTranslateIcon, ZmengPenIcon, ZmengSaveIcon, ZmengSaveToCloudIcon, ZmengScrollIcon, ZmengSelectIcon, ZmengSerialNumberIcon, ZmengTextIcon } from "@/components/zmengIcons";
+import {
+	ZmengEllipseIcon,
+	ZmengEraserIcon,
+	ZmengFastSaveIcon,
+	ZmengFixedIcon,
+	ZmengOcrDetectIcon,
+	ZmengOcrTranslateIcon,
+	ZmengPenIcon,
+	ZmengSaveIcon,
+	ZmengSaveToCloudIcon,
+	ZmengScrollIcon,
+	ZmengSelectIcon,
+	ZmengSerialNumberIcon,
+	ZmengTextIcon,
+} from "@/components/zmengIcons";
 import {
 	PLUGIN_ID_RAPID_OCR,
 	PLUGIN_ID_TRANSLATE,
@@ -149,8 +167,6 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 		ScrollScreenshotActionType | undefined
 	>(undefined);
 	const drawToolbarRef = useRef<HTMLDivElement | null>(null);
-	// 弹层专用挂载点：无 transform 且可交互（.draw-toolbar-container 是 pointer-events:none）
-	const popupContainerRef = useRef<HTMLDivElement | null>(null);
 	const dragButtonActionRef = useRef<DragButtonActionType | undefined>(
 		undefined,
 	);
@@ -529,7 +545,6 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 		return {
 			drawToolarContainerRef,
 			drawToolbarRef,
-			popupContainerRef,
 			draggingRef,
 			setDragging,
 		};
@@ -724,19 +739,6 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 			onContextMenu={handleContextMenu}
 			ref={drawToolarContainerRef}
 		>
-			{/* Tooltip/Popover 挂载点：fixed 定位无视工具条 transform，且不受容器 pointer-events:none 影响 */}
-			<div
-				ref={popupContainerRef}
-				style={{
-					position: "fixed",
-					top: 0,
-					left: 0,
-					width: 0,
-					height: 0,
-					pointerEvents: "auto",
-					zIndex: zIndexs.Draw_Toolbar,
-				}}
-			/>
 			<DrawToolbarContext.Provider value={drawToolbarContextValue}>
 				<div ref={drawToolbarOpacityWrapRef}>
 					<div
