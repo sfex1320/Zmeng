@@ -14,6 +14,7 @@ members = [
     "src-crates/tauri-commands/http-service",
     "src-crates/webview",
     "src-crates/http-services",
+    "src-crates/zmeng-capture",
 ]
 
 [package]
