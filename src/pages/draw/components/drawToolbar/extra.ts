@@ -19,6 +19,8 @@ export const getButtonIconColorByState = (
 export type DrawToolbarContextType = {
 	drawToolarContainerRef: React.RefObject<HTMLDivElement | null>;
 	drawToolbarRef: React.RefObject<HTMLDivElement | null>;
+	/** 弹层（Tooltip/Popover）专用挂载点：fixed 无 transform + 可交互（容器本体是 pointer-events:none，弹层挂它会无法悬停） */
+	popupContainerRef: React.RefObject<HTMLDivElement | null>;
 	draggingRef: React.RefObject<boolean>;
 	setDragging: (dragging: boolean) => void;
 };
@@ -26,6 +28,7 @@ export type DrawToolbarContextType = {
 export const DrawToolbarContext = React.createContext<DrawToolbarContextType>({
 	drawToolarContainerRef: { current: null },
 	drawToolbarRef: { current: null },
+	popupContainerRef: { current: null },
 	draggingRef: { current: false },
 	setDragging: () => {},
 });

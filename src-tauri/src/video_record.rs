@@ -134,8 +134,20 @@ pub async fn video_record_resume(
 pub async fn video_record_get_microphone_device_names(
     video_service: tauri::State<'_, Mutex<VideoRecordService>>,
 ) -> Result<Vec<String>, String> {
-    let service = video_service.lock().await;
-    Ok(service.get_microphone_device_names())
+    // 短暂持锁仅取 ffmpeg 路径；-list_devices 可能在故障音频设备上长时间阻塞，
+    // 必须在锁外执行，否则会卡死整个录屏服务（关闭/暂停等全部无响应）
+    let ffmpeg_path = {
+        let service = video_service.lock().await;
+        service.resolve_ffmpeg_path()
+    };
+    match ffmpeg_path {
+        Some(path) => tokio::task::spawn_blocking(move || {
+            VideoRecordService::list_microphone_devices_outside_lock(&path)
+        })
+        .await
+        .map_err(|e| e.to_string()),
+        None => Ok(Vec::new()),
+    }
 }
 
 #[command]

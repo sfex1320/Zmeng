@@ -320,6 +320,26 @@ export const VideoRecordToolbarPage: React.FC = () => {
 		],
 	);
 
+	// ESC 关闭：未开始录制时按 ESC 直接关闭录屏窗口（录制/暂停中仍用工具条按钮，
+	// 避免误触丢录制）；此前 ESC 完全无响应，工具条只能强杀进程
+	useEffect(() => {
+		const onKey = (e: KeyboardEvent) => {
+			if (e.key !== "Escape") {
+				return;
+			}
+			if (
+				videoRecordStateRef.current === VideoRecordState.Idle ||
+				videoRecordStateRef.current === undefined
+			) {
+				closeVideoRecordWindow();
+			}
+		};
+		window.addEventListener("keydown", onKey);
+		return () => {
+			window.removeEventListener("keydown", onKey);
+		};
+	}, [closeVideoRecordWindow]);
+
 	const enableStopRecord =
 		videoRecordState === VideoRecordState.Recording ||
 		videoRecordState === VideoRecordState.Paused;

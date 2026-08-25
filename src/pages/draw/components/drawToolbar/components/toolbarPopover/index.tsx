@@ -7,12 +7,12 @@ export const ToolbarPopover = ({
 	children,
 	...props
 }: React.ComponentProps<typeof Popover>) => {
-	const { drawToolbarRef, drawToolarContainerRef } = useContext(DrawToolbarContext);
+	const { drawToolbarRef, popupContainerRef } = useContext(DrawToolbarContext);
 
-	// 挂无 transform 的外层容器，避免 transform 祖先下的定位偏移（多屏跑偏）
+	// 挂 fixed 专用容器：定位准（无 transform）且弹层自身可交互（容器本体 pointer-events:none）
 	const getPopupContainer = useCallback(() => {
-		return drawToolarContainerRef.current ?? drawToolbarRef.current ?? document.body;
-	}, [drawToolarContainerRef, drawToolbarRef]);
+		return popupContainerRef.current ?? drawToolbarRef.current ?? document.body;
+	}, [popupContainerRef, drawToolbarRef]);
 	return (
 		<Popover {...props} getPopupContainer={getPopupContainer}>
 			{children}

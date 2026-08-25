@@ -129,7 +129,7 @@ impl VideoRecordService {
     }
 
     /// 解析实际可用的 ffmpeg：插件目录 → 随包/手动放置的 models 目录 → None（回退 PATH）
-    fn resolve_ffmpeg_path(&self) -> Option<PathBuf> {
+    pub fn resolve_ffmpeg_path(&self) -> Option<PathBuf> {
         if let Some(path) = &self.ffmpeg_path {
             if path.is_file() {
                 return Some(path.clone());
@@ -835,6 +835,22 @@ impl VideoRecordService {
             device_name
         );
         None
+    }
+
+    /// 在服务锁外枚举麦克风设备（阻塞调用；禁止在持有服务锁时调用）
+    pub fn list_microphone_devices_outside_lock(
+        ffmpeg_path: &Path,
+    ) -> Vec<String> {
+        let mut service = Self {
+            state: VideoRecordState::Idle,
+            child: None,
+            segments: Vec::new(),
+            segment_counter: 0,
+            recording_params: None,
+            record_video_size: None,
+            ffmpeg_path: Some(ffmpeg_path.to_path_buf()),
+        };
+        service.get_microphone_device_names()
     }
 
     pub fn kill(&mut self) -> Result<()> {
