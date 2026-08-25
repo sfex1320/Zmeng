@@ -60,6 +60,9 @@ export const ZmengAnnotateCanvas = forwardRef<
 
 	// 绘制中的元素（预览）
 	const drawingRef = useRef<ZmengElement | null>(null);
+	// 本次绘制的原始起点：pointerdown 时记录。此前直接用元素自身的 min 作为起点，
+	// 拖动过程中 min 会被 normalize 更新，鼠标回拉时起点跟着漂移，矩形/椭圆变形
+	const drawStartRef = useRef<ZmengPoint | null>(null);
 	const [selectedId, setSelectedId] = useState<string | undefined>();
 
 	toolRef.current = tool;
@@ -239,6 +242,7 @@ export const ZmengAnnotateCanvas = forwardRef<
 
 		if (el) {
 			drawingRef.current = el;
+			drawStartRef.current = point;
 			(e.target as HTMLCanvasElement).setPointerCapture(e.pointerId);
 			redraw();
 		}
@@ -253,7 +257,7 @@ export const ZmengAnnotateCanvas = forwardRef<
 			case "ellipse":
 			case "highlight":
 			case "blur": {
-				const start = el.min;
+				const start = drawStartRef.current ?? el.min;
 				const n = normalize(start, point);
 				el.min = n.min;
 				el.max = n.max;
@@ -274,6 +278,7 @@ export const ZmengAnnotateCanvas = forwardRef<
 		const el = drawingRef.current;
 		if (!el) return;
 		drawingRef.current = null;
+		drawStartRef.current = null;
 		// 忽略误触（过小的形状）
 		const tooSmall =
 			el.type === "pen"

@@ -80,11 +80,13 @@ const KeyEventHandleCore: React.FC<{
 		);
 	}, [componentKey, intl, keyEventValue?.hotKey]);
 
-	// 多屏修复：提示渲染到工具栏容器内（窗口内定位），避免被浏览器放到另一块屏幕上
-	const { drawToolbarRef } = useContext(DrawToolbarContext);
+	// 多屏修复：提示挂到无 transform 的外层容器。此前挂 .draw-toolbar（带拖拽
+	// transform + 缩放），antd 对 transform 祖先的定位计算会偏移到另一块屏幕
+	const { drawToolbarRef, drawToolarContainerRef } = useContext(DrawToolbarContext);
 	const getPopupContainer = useCallback(
-		() => drawToolbarRef.current ?? document.body,
-		[drawToolbarRef],
+		() =>
+			drawToolarContainerRef.current ?? drawToolbarRef.current ?? document.body,
+		[drawToolarContainerRef, drawToolbarRef],
 	);
 
 	return (

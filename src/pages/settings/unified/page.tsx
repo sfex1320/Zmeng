@@ -1503,9 +1503,12 @@ export const UnifiedSettingsPage: React.FC<{ category: CatKey }> = ({
 								fontSize: 12,
 								color: token.colorTextTertiary,
 								padding: "10px 0 4px",
+								lineHeight: 1.8,
 							}}
 						>
 							在任意应用中按下即可触发；点按钮后按下新的组合键即可修改。
+							<br />
+							注意：这是「全局快捷键」。截图界面工具栏内还有一套工具切换快捷键（如标注工具、OCR、翻译），仅在截图时生效，鼠标悬停截图工具条的按钮即可看到对应按键。
 						</div>
 						{SHORTCUT_ITEMS.map(({ fn, label }) => (
 							<Row key={fn} title={label}>
