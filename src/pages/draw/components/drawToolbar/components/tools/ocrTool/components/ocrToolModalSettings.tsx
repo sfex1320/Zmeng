@@ -1,4 +1,4 @@
-import { SettingOutlined } from "@ant-design/icons";
+import { ZmengSettingsIcon } from "@/components/zmengIcons";
 import { ModalForm } from "@ant-design/pro-form";
 import { Button } from "antd";
 import { FormattedMessage, useIntl } from "react-intl";
@@ -14,7 +14,7 @@ export const OcrToolModalSettings: React.FC<{
 			title={<FormattedMessage id="draw.ocrToolModalSettings.title" />}
 			trigger={
 				<Button
-					icon={<SettingOutlined />}
+					icon={<ZmengSettingsIcon />}
 					title={intl.formatMessage({ id: "draw.ocrToolModalSettings.title" })}
 					key="ocrToolModalSettings"
 					type="text"

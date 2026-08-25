@@ -1,11 +1,7 @@
 "use client";
 
-import {
-	CloseOutlined,
-	CopyOutlined,
-	DragOutlined,
-	LockOutlined,
-} from "@ant-design/icons";
+import { CloseOutlined } from "@ant-design/icons";
+import { ZmengClipboardIcon, ZmengLockIcon, ZmengMoveIcon } from "@/components/zmengIcons";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Flex, theme } from "antd";
 import { debounce } from "es-toolkit";
@@ -23,21 +19,7 @@ import {
 	type ExcalidrawEventParams,
 	ExcalidrawEventPublisher,
 } from "@/components/drawCore/extra";
-import {
-	ArrowSelectIcon,
-	CircleIcon,
-	EraserIcon,
-	FastSaveIcon,
-	FixedIcon,
-	OcrDetectIcon,
-	OcrTranslateIcon,
-	PenIcon,
-	SaveIcon,
-	SaveToCloudIcon,
-	ScrollScreenshotIcon,
-	SerialNumberIcon,
-	TextIcon,
-} from "@/components/icons";
+import { ZmengEllipseIcon, ZmengEraserIcon, ZmengFastSaveIcon, ZmengFixedIcon, ZmengOcrDetectIcon, ZmengOcrTranslateIcon, ZmengPenIcon, ZmengSaveIcon, ZmengSaveToCloudIcon, ZmengScrollIcon, ZmengSelectIcon, ZmengSerialNumberIcon, ZmengTextIcon } from "@/components/zmengIcons";
 import {
 	PLUGIN_ID_RAPID_OCR,
 	PLUGIN_ID_TRANSLATE,
@@ -759,7 +741,7 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 							<ToolButton
 								hidden={customToolbarToolHiddenMap?.[DrawState.Idle]}
 								componentKey={DrawToolbarKeyEventKey.MoveTool}
-								icon={<DragOutlined />}
+								icon={<ZmengMoveIcon />}
 								drawState={DrawState.Idle}
 								onClick={() => {
 									onToolClick(DrawState.Idle);
@@ -770,7 +752,7 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 							<ToolButton
 								hidden={customToolbarToolHiddenMap?.[DrawState.Select]}
 								componentKey={DrawToolbarKeyEventKey.SelectTool}
-								icon={<ArrowSelectIcon style={{ fontSize: "1.08em" }} />}
+								icon={<ZmengSelectIcon style={{ fontSize: "1.08em" }} />}
 								drawState={DrawState.Select}
 								disable={disableNormalScreenshotTool}
 								onClick={() => {
@@ -784,7 +766,7 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 									<ToolButton
 										hidden={customToolbarToolHiddenMap?.[DrawState.Lock]}
 										componentKey={DrawToolbarKeyEventKey.LockDrawTool}
-										icon={<LockOutlined />}
+										icon={<ZmengLockIcon />}
 										drawState={DrawState.Lock}
 										enableState={enableLockDrawTool}
 										onClick={() => {
@@ -807,7 +789,7 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 							<ToolButton
 								hidden={customToolbarToolHiddenMap?.[DrawState.Ellipse]}
 								componentKey={DrawToolbarKeyEventKey.EllipseTool}
-								icon={<CircleIcon style={{ fontSize: "1em" }} />}
+								icon={<ZmengEllipseIcon style={{ fontSize: "1em" }} />}
 								drawState={DrawState.Ellipse}
 								disable={disableNormalScreenshotTool}
 								onClick={() => {
@@ -826,7 +808,7 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 							<ToolButton
 								hidden={customToolbarToolHiddenMap?.[DrawState.Pen]}
 								componentKey={DrawToolbarKeyEventKey.PenTool}
-								icon={<PenIcon style={{ fontSize: "1.08em" }} />}
+								icon={<ZmengPenIcon style={{ fontSize: "1.08em" }} />}
 								drawState={DrawState.Pen}
 								disable={disableNormalScreenshotTool}
 								onClick={() => {
@@ -838,7 +820,7 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 							<ToolButton
 								hidden={customToolbarToolHiddenMap?.[DrawState.Text]}
 								componentKey={DrawToolbarKeyEventKey.TextTool}
-								icon={<TextIcon style={{ fontSize: "1.08em" }} />}
+								icon={<ZmengTextIcon style={{ fontSize: "1.08em" }} />}
 								drawState={DrawState.Text}
 								disable={disableNormalScreenshotTool}
 								onClick={() => {
@@ -850,7 +832,7 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 							<ToolButton
 								hidden={customToolbarToolHiddenMap?.[DrawState.SerialNumber]}
 								componentKey={DrawToolbarKeyEventKey.SerialNumberTool}
-								icon={<SerialNumberIcon style={{ fontSize: "1.16em" }} />}
+								icon={<ZmengSerialNumberIcon style={{ fontSize: "1.16em" }} />}
 								drawState={DrawState.SerialNumber}
 								disable={disableNormalScreenshotTool}
 								onClick={() => {
@@ -869,7 +851,7 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 							<ToolButton
 								hidden={customToolbarToolHiddenMap?.[DrawState.Eraser]}
 								componentKey={DrawToolbarKeyEventKey.EraserTool}
-								icon={<EraserIcon style={{ fontSize: "0.9em" }} />}
+								icon={<ZmengEraserIcon style={{ fontSize: "0.9em" }} />}
 								drawState={DrawState.Eraser}
 								disable={disableNormalScreenshotTool}
 								onClick={() => {
@@ -904,7 +886,7 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 								hidden={customToolbarToolHiddenMap?.[DrawState.Fixed]}
 								componentKey={DrawToolbarKeyEventKey.FixedTool}
 								icon={
-									<FixedIcon
+									<ZmengFixedIcon
 										style={{
 											fontSize: "1.15em",
 											position: "relative",
@@ -925,7 +907,7 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 									!isReadyStatus?.(PLUGIN_ID_RAPID_OCR)
 								}
 								componentKey={DrawToolbarKeyEventKey.OcrDetectTool}
-								icon={<OcrDetectIcon style={{ fontSize: "0.88em" }} />}
+								icon={<ZmengOcrDetectIcon style={{ fontSize: "0.88em" }} />}
 								drawState={DrawState.OcrDetect}
 								disable={
 									disableNormalScreenshotTool ||
@@ -946,7 +928,7 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 									)
 								}
 								componentKey={DrawToolbarKeyEventKey.OcrTranslateTool}
-								icon={<OcrTranslateIcon style={{ fontSize: "1em" }} />}
+								icon={<ZmengOcrTranslateIcon style={{ fontSize: "1em" }} />}
 								drawState={DrawState.OcrTranslate}
 								disable={
 									disableNormalScreenshotTool ||
@@ -968,7 +950,7 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 								componentKey={DrawToolbarKeyEventKey.ScrollScreenshotTool}
 								icon={
 									<div style={{ position: "relative", top: "0.11em" }}>
-										<ScrollScreenshotIcon style={{ fontSize: "1.2em" }} />
+										<ZmengScrollIcon style={{ fontSize: "1.2em" }} />
 									</div>
 								}
 								drawState={DrawState.ScrollScreenshot}
@@ -982,7 +964,7 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 								<ToolButton
 									hidden={customToolbarToolHiddenMap?.[DrawState.FastSave]}
 									componentKey={DrawToolbarKeyEventKey.FastSaveTool}
-									icon={<FastSaveIcon style={{ fontSize: "1.08em" }} />}
+									icon={<ZmengFastSaveIcon style={{ fontSize: "1.08em" }} />}
 									drawState={DrawState.FastSave}
 									onClick={() => {
 										onSave(true);
@@ -995,7 +977,7 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 								<ToolButton
 									hidden={customToolbarToolHiddenMap?.[DrawState.SaveToCloud]}
 									componentKey={DrawToolbarKeyEventKey.SaveToCloudTool}
-									icon={<SaveToCloudIcon style={{ fontSize: "1.08em" }} />}
+									icon={<ZmengSaveToCloudIcon style={{ fontSize: "1.08em" }} />}
 									drawState={DrawState.SaveToCloud}
 									onClick={() => {
 										onSaveToCloud();
@@ -1007,7 +989,7 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 							<ToolButton
 								hidden={customToolbarToolHiddenMap?.[DrawState.Save]}
 								componentKey={DrawToolbarKeyEventKey.SaveTool}
-								icon={<SaveIcon style={{ fontSize: "1em" }} />}
+								icon={<ZmengSaveIcon style={{ fontSize: "1em" }} />}
 								drawState={DrawState.Save}
 								onClick={() => {
 									onSave();
@@ -1041,7 +1023,7 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 								hidden={customToolbarToolHiddenMap?.[DrawState.Copy]}
 								componentKey={DrawToolbarKeyEventKey.CopyTool}
 								icon={
-									<CopyOutlined
+									<ZmengClipboardIcon
 										style={{ fontSize: "0.92em", color: token.colorPrimary }}
 									/>
 								}
@@ -1082,14 +1064,21 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
                     line-height: 0;
                 }
 
+                /* ZMENG 系列工具条视觉：毛玻璃胶囊 */
                 .draw-toolbar {
-                    padding: ${token.paddingXXS}px ${token.paddingSM}px;
+                    padding: 5px;
                     box-sizing: border-box;
-                    background-color: ${token.colorBgContainer};
-                    border-radius: ${token.borderRadiusLG}px;
+                    background-color: ${token.colorBgContainer}D9;
+                    backdrop-filter: blur(18px) saturate(1.5);
+                    -webkit-backdrop-filter: blur(18px) saturate(1.5);
+                    border: 1px solid ${token.colorBorderSecondary};
+                    border-radius: 14px;
                     cursor: default; /* 防止非拖动区域也变成可拖动状态 */
                     color: ${token.colorText};
-                    box-shadow: 0 0 3px 0px ${token.colorPrimaryHover};
+                    box-shadow:
+                        0 10px 30px rgba(0, 0, 0, 0.18),
+                        0 2px 8px rgba(0, 0, 0, 0.1),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.06);
                     transition: opacity ${token.motionDurationMid} ${token.motionEaseInOut};
                     z-index: ${zIndexs.Draw_Toolbar};
                 }
@@ -1116,8 +1105,37 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
                     margin-left: -3px;
                 }
 
+                /* 系列化按钮：32×32、圆角 9px、统一过渡与悬浮反馈 */
+                .draw-toolbar-container :global(.ant-btn) {
+                    min-width: 32px;
+                    width: 32px;
+                    height: 32px;
+                    padding: 0;
+                    border-radius: 9px;
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    transition:
+                        background-color 0.15s ease,
+                        color 0.15s ease,
+                        transform 0.15s ease,
+                        box-shadow 0.15s ease;
+                }
+
+                .draw-toolbar-container :global(.ant-btn):not(:disabled):hover {
+                    transform: translateY(-1px);
+                }
+
+                .draw-toolbar-container :global(.ant-btn):not(:disabled):active {
+                    transform: translateY(0);
+                }
+
+                .draw-toolbar-container :global(.ant-btn):global(.ant-btn-primary) {
+                    box-shadow: 0 2px 8px ${token.colorPrimary}66;
+                }
+
                 .draw-toolbar-container :global(.ant-btn) :global(.ant-btn-icon) {
-                    font-size: 24px;
+                    font-size: 19px;
                     display: flex;
                     align-items: center;
                 }
@@ -1127,12 +1145,22 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
                     align-items: center;
                 }
 
+                /* 子工具弹层与主工具条同系列视觉 */
+                .draw-toolbar-container :global(.ant-popover) :global(.ant-popover-inner) {
+                    background-color: ${token.colorBgContainer}D9;
+                    backdrop-filter: blur(18px) saturate(1.5);
+                    -webkit-backdrop-filter: blur(18px) saturate(1.5);
+                    border: 1px solid ${token.colorBorderSecondary};
+                    border-radius: 12px;
+                    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+                }
+
                 .draw-toolbar-container :global(.draw-toolbar-splitter),
                 .draw-toolbar-splitter {
                     width: 1px;
-                    height: 0.83em;
-                    background-color: ${token.colorBorder};
-                    margin: 0 ${token.marginXXS}px;
+                    height: 18px;
+                    background-color: ${token.colorBorderSecondary};
+                    margin: 0 4px;
                 }
             `}</style>
 		</div>

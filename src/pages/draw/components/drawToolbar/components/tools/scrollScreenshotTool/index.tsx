@@ -31,7 +31,7 @@ import {
 } from "@/commands/scrollScreenshot";
 import { DrawStatePublisher } from "@/components/drawCore/extra";
 import { EventListenerContext } from "@/components/eventListener";
-import { RotateIcon } from "@/components/icons";
+import { ZmengRotateIcon } from "@/components/zmengIcons";
 import { LISTEN_KEY_SERVICE_MOUSE_DOWN_EMIT_KEY } from "@/constants/eventListener";
 import { AntdContext } from "@/contexts/antdContext";
 import { AppSettingsPublisher } from "@/contexts/appSettingsActionContext";
@@ -731,7 +731,7 @@ export const ScrollScreenshot: React.FC<{
 							}
 							startCapture();
 						}}
-						icon={<RotateIcon />}
+						icon={<ZmengRotateIcon />}
 						title={intl.formatMessage({
 							id: "draw.scrollScreenshot.changeDirection",
 						})}

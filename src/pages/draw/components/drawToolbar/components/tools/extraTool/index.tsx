@@ -1,10 +1,10 @@
-import { ScanOutlined } from "@ant-design/icons";
+import { ZmengScanIcon } from "@/components/zmengIcons";
 import { Button, Flex, message, theme } from "antd";
 import { useCallback, useContext, useState } from "react";
 import { useIntl } from "react-intl";
 import { createVideoRecordWindow } from "@/commands/core";
 import { DrawStatePublisher } from "@/components/drawCore/extra";
-import { VideoRecordIcon } from "@/components/icons";
+import { ZmengVideoRecordIcon } from "@/components/zmengIcons";
 import { PLUGIN_ID_FFMPEG } from "@/constants/pluginService";
 import {
 	AppSettingsActionContext,
@@ -131,7 +131,7 @@ export const ExtraTool: React.FC<{
 
 	const scanQrcodeButton = (
 		<Button
-			icon={<ScanOutlined />}
+			icon={<ZmengScanIcon />}
 			title={intl.formatMessage({ id: "draw.extraTool.scanQrcode" })}
 			type={getButtonTypeByState(activeTool === ExtraToolList.ScanQrcode)}
 			key="scanQrcode"
@@ -144,7 +144,7 @@ export const ExtraTool: React.FC<{
 
 	const videoRecordButton = (
 		<Button
-			icon={<VideoRecordIcon />}
+			icon={<ZmengVideoRecordIcon />}
 			title={intl.formatMessage({ id: "draw.extraTool.videoRecord" })}
 			type={getButtonTypeByState(activeTool === ExtraToolList.VideoRecord)}
 			key="videoRecord"

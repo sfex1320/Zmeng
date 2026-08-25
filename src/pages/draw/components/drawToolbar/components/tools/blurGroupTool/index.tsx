@@ -2,7 +2,7 @@ import { Button, Flex, theme } from "antd";
 import React, { useCallback, useContext, useMemo, useState } from "react";
 import { useIntl } from "react-intl";
 import { DrawStatePublisher } from "@/components/drawCore/extra";
-import { FilterFreeDrawIcon, FilterIcon } from "@/components/icons";
+import { ZmengFilterFreeDrawIcon, ZmengFilterIcon } from "@/components/zmengIcons";
 import {
 	AppSettingsActionContext,
 	AppSettingsPublisher,
@@ -60,7 +60,7 @@ const BlurGroupToolCore: React.FC<{
 			<ToolButton
 				hidden={customToolbarToolHiddenMap?.[DrawState.Blur]}
 				componentKey={DrawToolbarKeyEventKey.BlurTool}
-				icon={<FilterIcon />}
+				icon={<ZmengFilterIcon />}
 				drawState={DrawState.Blur}
 				disable={disable}
 				key="blur"
@@ -80,7 +80,7 @@ const BlurGroupToolCore: React.FC<{
 	const blurFreeDrawButton = useMemo(() => {
 		return (
 			<Button
-				icon={<FilterFreeDrawIcon style={{ fontSize: "1em" }} />}
+				icon={<ZmengFilterFreeDrawIcon style={{ fontSize: "1em" }} />}
 				title={intl.formatMessage({ id: "draw.blurFreeDrawTool" })}
 				type={getButtonTypeByState(drawState === DrawState.BlurFreeDraw)}
 				key="blurFreeDraw"

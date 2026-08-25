@@ -2,11 +2,7 @@ import { Button } from "antd";
 import { useCallback, useState } from "react";
 import { useIntl } from "react-intl";
 import { DrawStatePublisher } from "@/components/drawCore/extra";
-import {
-	OcrTranslateIcon,
-	VisionMarkdownIcon,
-	VisionModelHtmlIcon,
-} from "@/components/icons";
+import { ZmengOcrTranslateIcon, ZmengVisionHtmlIcon, ZmengVisionMarkdownIcon } from "@/components/zmengIcons";
 import {
 	PLUGIN_ID_TRANSLATE,
 } from "@/constants/pluginService";
@@ -103,7 +99,7 @@ const OcrTool: React.FC<{
 										? "primary"
 										: "text"
 								}
-								icon={<OcrTranslateIcon />}
+								icon={<ZmengOcrTranslateIcon />}
 								title={intl.formatMessage({ id: "draw.ocrDetect.translate" })}
 								key="translate"
 							/>,
@@ -131,7 +127,7 @@ const OcrTool: React.FC<{
 										? "primary"
 										: "text"
 								}
-								icon={<VisionModelHtmlIcon />}
+								icon={<ZmengVisionHtmlIcon />}
 								title={intl.formatMessage({
 									id: "draw.ocrDetect.visionModelHtml",
 								})}
@@ -157,7 +153,7 @@ const OcrTool: React.FC<{
 										? "primary"
 										: "text"
 								}
-								icon={<VisionMarkdownIcon />}
+								icon={<ZmengVisionMarkdownIcon />}
 								title={intl.formatMessage({
 									id: "draw.ocrDetect.visionModelMarkdown",
 								})}

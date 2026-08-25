@@ -4,7 +4,7 @@ import { Button, Flex, theme } from "antd";
 import { useCallback, useContext, useMemo, useState } from "react";
 import { useIntl } from "react-intl";
 import { DrawStatePublisher } from "@/components/drawCore/extra";
-import { HighlightIcon, WatermarkIcon } from "@/components/icons";
+import { ZmengHighlightIcon, ZmengWatermarkIcon } from "@/components/zmengIcons";
 import {
 	AppSettingsActionContext,
 	AppSettingsPublisher,
@@ -61,7 +61,7 @@ export const DrawExtraTool: React.FC<{
 	const watermarkButton = useMemo(() => {
 		return (
 			<Button
-				icon={<WatermarkIcon />}
+				icon={<ZmengWatermarkIcon />}
 				title={intl.formatMessage({ id: "draw.watermarkTool" })}
 				type={getButtonTypeByState(drawState === DrawState.Watermark)}
 				key="watermark"
@@ -77,7 +77,7 @@ export const DrawExtraTool: React.FC<{
 	const highlightButton = useMemo(() => {
 		return (
 			<Button
-				icon={<HighlightIcon />}
+				icon={<ZmengHighlightIcon />}
 				title={intl.formatMessage({ id: "draw.highlightTool" })}
 				type={getButtonTypeByState(drawState === DrawState.Highlight)}
 				key="highlight"

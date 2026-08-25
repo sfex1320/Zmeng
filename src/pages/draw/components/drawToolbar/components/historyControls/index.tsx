@@ -1,4 +1,4 @@
-import { RedoOutlined, UndoOutlined } from "@ant-design/icons";
+import { ZmengRedoIcon, ZmengUndoIcon } from "@/components/zmengIcons";
 import React, { useEffect, useState } from "react";
 import { useHistory } from "@/components/drawCore/components/historyContext";
 import { DrawToolbarKeyEventKey } from "@/types/components/drawToolbar";
@@ -30,7 +30,7 @@ const HistoryControlsCore: React.FC<{ disable: boolean; hidden?: boolean }> = ({
 			<ToolButton
 				hidden={hidden}
 				componentKey={DrawToolbarKeyEventKey.UndoTool}
-				icon={<UndoOutlined />}
+				icon={<ZmengUndoIcon />}
 				drawState={DrawState.Undo}
 				disable={!canUndo || disable}
 				onClick={() => {
@@ -42,7 +42,7 @@ const HistoryControlsCore: React.FC<{ disable: boolean; hidden?: boolean }> = ({
 			<ToolButton
 				hidden={hidden}
 				componentKey={DrawToolbarKeyEventKey.RedoTool}
-				icon={<RedoOutlined />}
+				icon={<ZmengRedoIcon />}
 				drawState={DrawState.Redo}
 				disable={!canRedo || disable}
 				onClick={() => {

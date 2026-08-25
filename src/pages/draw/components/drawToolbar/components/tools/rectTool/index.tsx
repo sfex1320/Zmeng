@@ -2,7 +2,7 @@ import { Button, Flex, theme } from "antd";
 import React, { useCallback, useContext, useMemo, useState } from "react";
 import { useIntl } from "react-intl";
 import { DrawStatePublisher } from "@/components/drawCore/extra";
-import { DiamondIcon, RectIcon } from "@/components/icons";
+import { ZmengDiamondIcon, ZmengRectIcon } from "@/components/zmengIcons";
 import {
 	AppSettingsActionContext,
 	AppSettingsPublisher,
@@ -60,7 +60,7 @@ const RectToolCore: React.FC<{
 			<ToolButton
 				componentKey={DrawToolbarKeyEventKey.RectTool}
 				hidden={customToolbarToolHiddenMap?.[DrawState.Rect]}
-				icon={<RectIcon style={{ fontSize: "1em" }} />}
+				icon={<ZmengRectIcon style={{ fontSize: "1em" }} />}
 				disable={disable}
 				drawState={DrawState.Rect}
 				key="rect"
@@ -80,7 +80,7 @@ const RectToolCore: React.FC<{
 	const diamondButton = useMemo(() => {
 		return (
 			<Button
-				icon={<DiamondIcon />}
+				icon={<ZmengDiamondIcon />}
 				title={intl.formatMessage({ id: "draw.diamondTool" })}
 				type={getButtonTypeByState(drawState === DrawState.Diamond)}
 				key="diamond"

@@ -2,7 +2,7 @@ import { Button, Flex, theme } from "antd";
 import React, { useCallback, useContext, useMemo, useState } from "react";
 import { useIntl } from "react-intl";
 import { DrawStatePublisher } from "@/components/drawCore/extra";
-import { ArrowIcon, LineIcon } from "@/components/icons";
+import { ZmengArrowIcon, ZmengLineIcon } from "@/components/zmengIcons";
 import {
 	AppSettingsActionContext,
 	AppSettingsPublisher,
@@ -62,7 +62,7 @@ const ArrowToolCore: React.FC<{
 			<ToolButton
 				hidden={customToolbarToolHiddenMap?.[DrawState.Arrow]}
 				componentKey={DrawToolbarKeyEventKey.ArrowTool}
-				icon={<ArrowIcon style={{ fontSize: "0.83em" }} />}
+				icon={<ZmengArrowIcon style={{ fontSize: "0.83em" }} />}
 				drawState={DrawState.Arrow}
 				disable={disable}
 				key="arrow"
@@ -82,7 +82,7 @@ const ArrowToolCore: React.FC<{
 	const lineButton = useMemo(() => {
 		return (
 			<Button
-				icon={<LineIcon style={{ fontSize: "1.15em", height: "1em" }} />}
+				icon={<ZmengLineIcon style={{ fontSize: "1.15em", height: "1em" }} />}
 				title={intl.formatMessage({ id: "draw.lineTool" })}
 				type={getButtonTypeByState(drawState === DrawState.Line)}
 				key="line"
